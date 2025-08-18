@@ -1,0 +1,79 @@
+{
+  "name": "picpicker",
+  "version": "0.9.0",
+  "author": "Ariel Flesler <aflesler@gmail.com>",
+  "gecko_id": "picpicker@flesler.com",
+  "type": "module",
+  "description": "Privacy-first browser extension to extract all images from any webpage with one click",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "npm run build:chrome",
+    "build:chrome": "tsup --no-dts",
+    "build:firefox": "FIREFOX=1 tsup --no-dts",
+    "build:check": "tsc --noEmit",
+    "build:watch": "tsup --watch",
+    "build:zip": "cd dist && zip -r ../${npm_package_name}-${npm_package_version}.zip * && cd ..",
+    "build:clean": "npx rimraf dist/* *.tsbuildinfo *.zip",
+    "dev": "npm run build:watch",
+    "ts": "tsx",
+    "eslint": "eslint --cache",
+    "lint": "npm run eslint -- 'src/**/*.ts'",
+    "lint:fix": "npm run lint -- --fix",
+    "lint:full": "npm run build:check && npm run lint:fix",
+    "test": "npm run lint:full && npm run build",
+    "prepack": "npm run build:clean && npm run test && npm run build:zip",
+    "publish:dry": "npm pack --dry-run",
+    "publish:npm": "npm publish",
+    "publish:webstore": "npm run prepack && npm run webstore:upload",
+    "webstore:auth": "chrome-webstore-upload auth --config .webstore-upload-config.json",
+    "webstore:upload": "chrome-webstore-upload upload --source ${npm_package_name}-${npm_package_version}.zip --auto-publish false --config .webstore-upload-config.json",
+    "webstore:publish": "chrome-webstore-upload publish --config .webstore-upload-config.json",
+    "version:patch": "bin/release.sh patch",
+    "version:minor": "bin/release.sh minor",
+    "version:major": "bin/release.sh major"
+  },
+  "keywords": [
+    "chrome-extension",
+    "firefox-extension",
+    "browser-extension",
+    "image-extraction",
+    "image-downloader",
+    "web-scraping",
+    "bulk-download",
+    "media-extraction",
+    "typescript"
+  ],
+  "homepage": "https://chromewebstore.google.com/detail/picpicker/cdkeckobdlbiicpdboijmbllkbkhggao",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flesler/picpicker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/flesler/picpicker/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "webextension-polyfill": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/jszip": "^3.4.0",
+    "@types/node": "^20.0.0",
+    "@types/webextension-polyfill": "^0.12.3",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "auto-changelog": "^2.5.0",
+    "chrome-webstore-upload-cli": "^3.3.2",
+    "eslint": "^8.57.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

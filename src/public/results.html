@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extracted Images - PicPicker</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+
+    .header {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .page-info h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+    }
+
+    .page-info .meta {
+      font-size: 0.875rem;
+      color: #64748b;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .control-group label {
+      font-size: 0.875rem;
+      color: #475569;
+      font-weight: 500;
+    }
+
+    select, button {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    select:hover, button:hover {
+      border-color: #9ca3af;
+    }
+
+    select:focus, button:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .view-controls {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 0.375rem;
+      padding: 0.25rem;
+    }
+
+    .view-btn {
+      border: none;
+      background: transparent;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+
+    .view-btn.active, .view-btn:hover {
+      background: white;
+      color: #1e293b;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .extract-btn {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .extract-btn:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+      border-color: transparent;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .main-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #64748b;
+    }
+
+    .loading-spinner {
+      width: 2rem;
+      height: 2rem;
+      border: 2px solid #e2e8f0;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .image-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+
+    .image-grid.size-small {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    .image-grid.size-large {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+
+    .image-item {
+      background: white;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .image-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .image-item.selected {
+      ring: 2px solid #3b82f6;
+      box-shadow: 0 0 0 2px #3b82f6;
+    }
+
+    .image-container {
+      position: relative;
+      aspect-ratio: 1;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+
+    .image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.2s;
+    }
+
+    .image-item:hover .image-container img {
+      transform: scale(1.05);
+    }
+
+    .image-checkbox {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.5rem;
+      z-index: 10;
+      width: 1.25rem;
+      height: 1.25rem;
+      cursor: pointer;
+    }
+
+    .image-info {
+      padding: 0.75rem;
+    }
+
+    .image-info .size {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+    }
+
+    .image-info .format {
+      font-size: 0.75rem;
+      background: #e2e8f0;
+      color: #475569;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      display: inline-block;
+      font-weight: 500;
+    }
+
+    .no-images {
+      text-align: center;
+      padding: 3rem;
+      color: #64748b;
+    }
+
+    .no-images h3 {
+      font-size: 1.125rem;
+      margin-bottom: 0.5rem;
+      color: #374151;
+    }
+
+    .lightbox {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lightbox.active {
+      display: flex;
+    }
+
+    .lightbox-content {
+      max-width: 90vw;
+      max-height: 90vh;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: calc(90vh - 200px); /* Reserve space for info section */
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      flex-shrink: 1;
+      align-self: center; /* Center the image horizontally */
+    }
+
+    .lightbox-info {
+      background: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      flex-shrink: 0;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .lightbox-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: -3rem;
+      right: 0;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .bulk-actions {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      border: 1px solid #e2e8f0;
+      display: none;
+    }
+
+    .bulk-actions.active {
+      display: block;
+    }
+
+    .bulk-actions-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .selection-info {
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+
+    .selection-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+      }
+
+      .controls {
+        justify-content: center;
+      }
+
+      .main-content {
+        padding: 1rem;
+      }
+
+      .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="page-info">
+        <h1 id="pageTitle">Images from webpage</h1>
+        <div class="meta">
+          <span id="imageCount">0 images found</span> • 
+          <span id="pageUrl">Loading...</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="formatFilter">Format:</label>
+          <select id="formatFilter">
+            <option value="">All formats</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="sizeFilter">Size:</label>
+          <select id="sizeFilter">
+            <option value="">All sizes</option>
+            <option value="small">Small (&lt;100px)</option>
+            <option value="medium">Medium (100-500px)</option>
+            <option value="large">Large (&gt;500px)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="sourceFilter">Source:</label>
+          <select id="sourceFilter">
+            <option value="">All sources</option>
+            <option value="img">IMG tags</option>
+            <option value="bg">Backgrounds</option>
+            <option value="svg">SVG</option>
+            <option value="video">Video</option>
+            <option value="canvas">Canvas</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="visibilityFilter">Visibility:</label>
+          <select id="visibilityFilter">
+            <option value="">All images</option>
+            <option value="visible">Visible in viewport</option>
+            <option value="hidden">Not visible</option>
+          </select>
+        </div>
+
+        <div class="control-group" id="textSearchGroup" style="display: none;">
+          <label for="textSearch">Text:</label>
+          <input type="text" id="textSearch" placeholder="Search alt text..."
+            style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.875rem;">
+        </div>
+
+        <div class="view-controls">
+          <button class="view-btn" data-size="small">Small</button>
+          <button class="view-btn active" data-size="medium">Medium</button>
+          <button class="view-btn" data-size="large">Large</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="bulk-actions" id="bulkActions">
+      <div class="bulk-actions-content">
+        <div class="selection-info">
+          <span id="selectedCount">0</span> images selected
+        </div>
+        <div class="selection-actions">
+          <button id="selectAll">Select All</button>
+          <button id="selectNone">Select None</button>
+          <button id="downloadSelected" disabled>Download Selected</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="loading-spinner"></div>
+      <p>Extracting images from page...</p>
+    </div>
+
+    <div class="image-grid" id="imageGrid">
+      <!-- Images will be populated here -->
+    </div>
+
+    <div class="no-images" id="noImages" style="display: none;">
+      <h3>No images found</h3>
+      <p>Try adjusting your filters or extraction settings.</p>
+    </div>
+  </main>
+
+  <!-- Lightbox Modal -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-content">
+      <button class="lightbox-close" id="lightboxClose">×</button>
+      <img id="lightboxImage" src="" alt="">
+      <div class="lightbox-info">
+        <div id="lightboxMetadata"></div>
+        <div class="lightbox-actions">
+          <button id="downloadCurrent">Download</button>
+          <button id="copyUrl">Copy URL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="results.js"></script>
+</body>
+</html>

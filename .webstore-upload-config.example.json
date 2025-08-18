@@ -1,0 +1,6 @@
+{
+  "extensionId": "your-extension-id-here",
+  "clientId": "your-oauth-client-id.apps.googleusercontent.com",
+  "clientSecret": "your-oauth-client-secret",
+  "refreshToken": "your-refresh-token"
+}
