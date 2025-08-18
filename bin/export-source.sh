@@ -49,6 +49,7 @@ node_modules/
 # IDE
 .vscode/
 .idea/
+.zip
 EOF
 
 # Create the zip file
@@ -61,6 +62,9 @@ mv "${OUTPUT_FILE}" "${OLDPWD}/"
 
 # Cleanup
 rm -rf "${TEMP_DIR}"
+
+# Go back to original directory
+cd "${OLDPWD}"
 
 echo "✅ Source code exported to: ${OUTPUT_FILE}"
 echo ""

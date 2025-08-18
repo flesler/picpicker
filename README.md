@@ -1,3 +1,8 @@
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/mkiilhjbheleblbeegpbpnffkinapakn?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/picpicker/mkiilhjbheleblbeegpbpnffkinapakn)
+[![Chrome Web Store Rating](https://img.shields.io/chrome-web-store/rating/mkiilhjbheleblbeegpbpnffkinapakn)](https://chromewebstore.google.com/detail/picpicker/mkiilhjbheleblbeegpbpnffkinapakn)
+[![Mozilla Add-on](https://img.shields.io/amo/v/picpicker?label=Firefox%20Add-on)](https://addons.mozilla.org/firefox/addon/picpicker/)
+[![Mozilla Add-on Rating](https://img.shields.io/amo/rating/picpicker)](https://addons.mozilla.org/firefox/addon/picpicker/)
+
 # PicPicker - Universal Image Extractor
 
 A powerful browser extension that extracts **all images** from any webpage with one click. Works universally on any website - no domain restrictions. Extract images from img tags, CSS backgrounds, SVG elements, video posters, and even lazy-loaded content.
@@ -25,7 +30,7 @@ A powerful browser extension that extracts **all images** from any webpage with 
 
 ### Popup Settings
 <p align="center">
-  <img src="images/screenshot1.png" alt="PicPicker Popup Settings" width="400">
+  <img src="images/screenshot1.png" alt="PicPicker Popup Settings" width="100%">
 </p>
 
 *Clean popup interface with extraction settings - minimum size, backgrounds, SVG, alt text options*
@@ -182,36 +187,6 @@ DOM Scanning → Session Storage → Grid Display
 - **Type safety** - Comprehensive interfaces prevent runtime errors
 - **Lint validation** - `npm run lint:full` catches issues early
 - **Build verification** - `npm run prepack` ensures release readiness
-
-## 🚀 Publishing
-
-### Development Testing
-```bash
-# Build and test locally
-npm run prepack
-
-# Load extension in Chrome
-# 1. Open chrome://extensions/
-# 2. Enable "Developer mode"
-# 3. Click "Load unpacked" → select dist/ folder
-
-# Test on various websites
-# Try image-heavy sites: Pinterest, Instagram, news sites
-```
-
-### Chrome Web Store
-1. **Build release:** `npm run prepack`
-2. **Create ZIP:** Extension builds to `picpicker-0.9.0.zip`
-3. **Upload:** [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole/)
-
-### Firefox Add-ons
-```bash
-# Build Firefox version
-FIREFOX=1 npm run build
-
-# Create source ZIP for Mozilla review
-./bin/export-source.sh
-```
 
 ## 📄 License
 
