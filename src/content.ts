@@ -53,17 +53,12 @@ function init() {
 
 // Main image extraction function - scans entire DOM for images
 async function extractAllImages(settings: ExtractionSettings): Promise<ExtractedImage[]> {
-  const images: ExtractedImage[] = []
-  const seenUrls = new Set<string>()
-
   try {
     // Use timeout to prevent hanging on large pages
     const timeoutPromise = new Promise<ExtractedImage[]>((_, reject) => {
       setTimeout(() => reject(new Error('Extraction timeout')), settings.extractionTimeout)
     })
-
-    const extractionPromise = performExtraction(settings, images, seenUrls)
-
+    const extractionPromise = performExtraction(settings)
     return await Promise.race([extractionPromise, timeoutPromise])
   } catch (error) {
     logger.error('Extraction error', error)
@@ -71,10 +66,19 @@ async function extractAllImages(settings: ExtractionSettings): Promise<Extracted
   }
 }
 
-async function performExtraction(settings: ExtractionSettings, images: ExtractedImage[], seenUrls: Set<string>): Promise<ExtractedImage[]> {
+async function performExtraction(settings: ExtractionSettings): Promise<ExtractedImage[]> {
+  const images: ExtractedImage[] = []
   // Scan all elements in the DOM
   const allElements = document.querySelectorAll('*')
   logger.info(`Scanning ${allElements.length} elements`)
+  // Helper to add image if valid and not already seen
+  const addImageIfValid = async (url: string | null | undefined, element: Element, source: ImageSourceType = 'img') => {
+    if (!url) return
+    const extracted = await createImageObject(url, element, source, settings)
+    if (extracted && !images.some(img => img.u === extracted.u)) {
+      images.push(extracted)
+    }
+  }
 
   for (const element of allElements) {
     // Stop if we've hit the limit
@@ -89,58 +93,28 @@ async function performExtraction(settings: ExtractionSettings, images: Extracted
         const img = element as HTMLImageElement
 
         // Extract from src attribute
-        if (img.src) {
-          const extracted = await createImageObject(img.src, img, 'img', settings)
-          if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-            images.push(extracted)
-            seenUrls.add(extracted.u)
-            // Debug logging for suspicious 100-image sites
-            if (images.length % 50 === 0) {
-              logger.info(`Progress: ${images.length} images extracted so far`)
-            }
-          }
-        }
+        await addImageIfValid(img.src, img)
 
         // Extract from srcset attribute (responsive images)
-        if (img.srcset) {
-          const srcsetUrls = parseSrcset(img.srcset)
-          for (const url of srcsetUrls) {
-            const extracted = await createImageObject(url, img, 'img', settings)
-            if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-              images.push(extracted)
-              seenUrls.add(extracted.u)
-              if (images.length % 50 === 0) {
-                logger.info(`Progress: ${images.length} images extracted so far (srcset)`)
-              }
-            }
-          }
+        const srcsetUrls = parseSrcset(img.srcset)
+        for (const url of srcsetUrls) {
+          await addImageIfValid(url, img)
         }
 
         // Extract from data attributes (lazy loading, etc.)
         const dataUrls = extractDataAttributes(img)
         for (const url of dataUrls) {
-          const extracted = await createImageObject(url, img, 'img', settings)
-          if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-            images.push(extracted)
-            seenUrls.add(extracted.u)
-          }
+          await addImageIfValid(url, img)
         }
       }
 
       // Extract from SOURCE tags (picture elements)
       if (settings.includeImgTags && element.tagName === 'SOURCE') {
         const source = element as HTMLSourceElement
-
         // Extract from srcset attribute in source tags
-        if (source.srcset) {
-          const srcsetUrls = parseSrcset(source.srcset)
-          for (const url of srcsetUrls) {
-            const extracted = await createImageObject(url, source, 'img', settings)
-            if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-              images.push(extracted)
-              seenUrls.add(extracted.u)
-            }
-          }
+        const srcsetUrls = parseSrcset(source.srcset)
+        for (const url of srcsetUrls) {
+          await addImageIfValid(url, source)
         }
       }
 
@@ -148,41 +122,22 @@ async function performExtraction(settings: ExtractionSettings, images: Extracted
       if (settings.includeBackgrounds) {
         const computed = window.getComputedStyle(element)
         const bgImage = computed.backgroundImage
-        if (bgImage && bgImage !== 'none' && bgImage.includes('url(')) {
+        if (bgImage?.includes('url(')) {
           const url = extractUrlFromCss(bgImage)
-          if (url) {
-            const extracted = await createImageObject(url, element, 'bg', settings)
-            if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-              images.push(extracted)
-              seenUrls.add(extracted.u)
-            }
-          }
+          await addImageIfValid(url, element, 'bg')
         }
 
         // Also check data attributes for background images
         const dataUrls = extractDataAttributes(element)
         for (const url of dataUrls) {
-          const extracted = await createImageObject(url, element, 'bg', settings)
-          if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-            images.push(extracted)
-            seenUrls.add(extracted.u)
-            if (images.length % 50 === 0) {
-              logger.info(`Progress: ${images.length} images extracted so far (background)`)
-            }
-          }
+          await addImageIfValid(url, element, 'bg')
         }
       }
 
       // Extract from VIDEO poster
       if (settings.includeVideoPoster && element.tagName === 'VIDEO') {
         const video = element as HTMLVideoElement
-        if (video.poster) {
-          const extracted = await createImageObject(video.poster, video, 'video', settings)
-          if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-            images.push(extracted)
-            seenUrls.add(extracted.u)
-          }
-        }
+        await addImageIfValid(video.poster, video, 'video')
       }
 
       // Extract from SVG
@@ -190,11 +145,7 @@ async function performExtraction(settings: ExtractionSettings, images: Extracted
         // Convert SVG to data URL
         const svgData = new XMLSerializer().serializeToString(element)
         const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgData)
-        const extracted = await createImageObject(svgUrl, element, 'svg', settings)
-        if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-          images.push(extracted)
-          seenUrls.add(extracted.u)
-        }
+        await addImageIfValid(svgUrl, element, 'svg')
       }
 
       // Extract from Canvas (expensive, disabled by default)
@@ -202,11 +153,7 @@ async function performExtraction(settings: ExtractionSettings, images: Extracted
         try {
           const canvas = element as HTMLCanvasElement
           const dataUrl = canvas.toDataURL()
-          const extracted = await createImageObject(dataUrl, canvas, 'canvas', settings)
-          if (extracted && shouldIncludeImage(extracted, settings, seenUrls)) {
-            images.push(extracted)
-            seenUrls.add(extracted.u)
-          }
+          await addImageIfValid(dataUrl, canvas, 'canvas')
         } catch (e) {
           // Canvas may be tainted by cross-origin content
           logger.warn('Could not extract canvas', e)
@@ -336,16 +283,6 @@ async function createImageObject(url: string, element: Element, source: ImageSou
   }
 }
 
-function shouldIncludeImage(image: ExtractedImage, settings: ExtractionSettings, seenUrls: Set<string>): boolean {
-  // Always check for duplicates
-  if (seenUrls.has(image.u)) {
-    return false
-  }
-
-  // Additional filtering can be added here
-  return true
-}
-
 // Parse srcset attribute to extract all image URLs
 function parseSrcset(srcset: string): string[] {
   const urls: string[] = []
@@ -364,28 +301,20 @@ function parseSrcset(srcset: string): string[] {
       }
     }
   }
-
-  return urls
+  // Return the bigger images first
+  return urls.reverse()
 }
 
 // Extract image URLs from data-* attributes commonly used for lazy loading
 function extractDataAttributes(element: Element): string[] {
   const urls: string[] = []
 
-  // Common data attribute patterns for images (lazy loading libraries, CMS, etc.)
-  const dataAttrs = [
-    'data-src', 'data-original', 'data-image', 'data-url', 'data-lazy',
-    'data-background', 'data-bg', 'data-background-image', 'data-img',
-    'data-large', 'data-full', 'data-hi-res', 'data-retina',
-    'data-lazyload', 'data-echo', 'data-unveil', 'data-aload',
-    'data-actual', 'data-defer-src', 'data-lazy-src', 'data-flickity-lazyload',
-    'data-sizes', 'data-bgset', 'data-pin-media', 'data-thumb',
-  ]
-
-  for (const attr of dataAttrs) {
-    const value = element.getAttribute(attr)
-    if (value && isValidImageUrl(value)) {
-      urls.push(value)
+  // Check all data-* attributes for image URLs
+  if (element instanceof HTMLElement) {
+    for (const value of Object.values(element.dataset)) {
+      if (value && isValidImageUrl(value)) {
+        urls.push(value)
+      }
     }
   }
 
