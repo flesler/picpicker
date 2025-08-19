@@ -39,6 +39,15 @@ async function initializePage() {
       if (response.success && response.images && response.pageInfo) {
         currentPageInfo = response.pageInfo
         allImages = response.images.map(convertToDisplayData)
+
+        // Sort images once - prioritize visible images first, then by original order
+        allImages.sort((a, b) => {
+          // First sort by visibility - visible images come first
+          if (a.v && !b.v) return -1
+          if (!a.v && b.v) return 1
+          // If both have same visibility, maintain original order
+          return 0
+        })
       } else {
         throw new Error(response.error || 'Failed to load session data')
       }
@@ -76,30 +85,6 @@ function convertToDisplayData(image: ExtractedImage): ImageDisplayData {
   return {
     ...image,
     id: generateId(),
-    estimatedSize: estimateFileSize(image),
-    isDuplicate: false,
-    originalUrl: image.u,
-  }
-}
-
-function estimateFileSize(image: ExtractedImage): number {
-  // Rough estimate based on dimensions and format
-  const width = image.w || 200
-  const height = image.h || 200
-  const pixels = width * height
-
-  switch (image.f) {
-  case 'jpg':
-  case 'jpeg':
-    return Math.round(pixels * 0.1) // ~10% compression
-  case 'png':
-    return Math.round(pixels * 0.4) // ~40% of raw
-  case 'gif':
-    return Math.round(pixels * 0.2) // ~20% of raw
-  case 'webp':
-    return Math.round(pixels * 0.08) // ~8% compression
-  default:
-    return Math.round(pixels * 0.2)
   }
 }
 
@@ -291,17 +276,7 @@ function renderImages() {
 
   grid.innerHTML = ''
 
-  // Sort images - prioritize visible images first, then by original order
-  const sortedImages = [...filteredImages].sort((a, b) => {
-    // First sort by visibility - visible images come first
-    if (a.v && !b.v) return -1
-    if (!a.v && b.v) return 1
-
-    // If both have same visibility, maintain original order
-    return 0
-  })
-
-  sortedImages.forEach(image => {
+  filteredImages.forEach(image => {
     const item = createImageItem(image)
     grid.appendChild(item)
   })

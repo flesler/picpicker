@@ -17,10 +17,6 @@ export interface ExtractedImage {
 // Extended image data for results page display
 export interface ImageDisplayData extends ExtractedImage {
   id: string
-  estimatedSize?: number
-  isDuplicate: boolean
-  selector?: string
-  originalUrl: string
 }
 
 // Page information for results display
