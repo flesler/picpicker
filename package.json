@@ -1,6 +1,6 @@
 {
   "name": "picpicker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Ariel Flesler <aflesler@gmail.com>",
   "gecko_id": "picpicker@flesler.com",
   "type": "module",
@@ -36,7 +36,22 @@
     "version:minor": "bin/release.sh minor",
     "version:major": "bin/release.sh major"
   },
-  "keywords": ["images", "photos", "browser-extension", "image-extraction", "image-downloader", "bulk-download", "save-images", "photo-extractor", "image-scraper", "download-photos", "extract-images", "mass-download", "website-images", "image-saver"],
+  "keywords": [
+    "images",
+    "photos",
+    "browser-extension",
+    "image-extraction",
+    "image-downloader",
+    "bulk-download",
+    "save-images",
+    "photo-extractor",
+    "image-scraper",
+    "download-photos",
+    "extract-images",
+    "mass-download",
+    "website-images",
+    "image-saver"
+  ],
   "homepage": "https://chromewebstore.google.com/detail/picpicker/mkiilhjbheleblbeegpbpnffkinapakn",
   "license": "MIT",
   "repository": {
