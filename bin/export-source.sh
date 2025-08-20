@@ -12,59 +12,19 @@ OUTPUT_FILE="${NAME}-source-v${VERSION}.zip"
 
 echo "Exporting source code for ${NAME} v${VERSION}..."
 
-# Create temporary directory
-TEMP_DIR=$(mktemp -d)
-EXPORT_DIR="${TEMP_DIR}/${NAME}-source"
+# Remove existing zip if it exists
+rm -f "${OUTPUT_FILE}"
 
-# Create export directory
-mkdir -p "${EXPORT_DIR}"
-
-# Copy source files
-echo "Copying source files..."
-cp -r src/ "${EXPORT_DIR}/"
-cp package.json "${EXPORT_DIR}/"
-cp package-lock.json "${EXPORT_DIR}/"
-cp tsconfig.json "${EXPORT_DIR}/"
-cp tsup.config.ts "${EXPORT_DIR}/"
-cp BUILD_README.md "${EXPORT_DIR}/"
-cp README.md "${EXPORT_DIR}/"
-cp LICENSE "${EXPORT_DIR}/"
-
-# Copy bin/ if it exists (for build scripts)
-if [ -d "bin/" ]; then
-    cp -r bin/ "${EXPORT_DIR}/"
-fi
-
-# Create .gitignore for the export to show what should be ignored
-cat > "${EXPORT_DIR}/.gitignore" << 'EOF'
-# Build output
-dist/
-node_modules/
-
-# Development
-.DS_Store
-*.log
-.env
-
-# IDE
-.vscode/
-.idea/
-.zip
-EOF
-
-# Create the zip file
+# Create the zip file directly with specified files
 echo "Creating zip file: ${OUTPUT_FILE}"
-cd "${TEMP_DIR}"
-zip -r "${OUTPUT_FILE}" "${NAME}-source/"
-
-# Move zip to original directory
-mv "${OUTPUT_FILE}" "${OLDPWD}/"
-
-# Cleanup
-rm -rf "${TEMP_DIR}"
-
-# Go back to original directory
-cd "${OLDPWD}"
+zip -r "${OUTPUT_FILE}" \
+  src/ \
+  bin/ \
+  package.json \
+  tsup.config.ts \
+  tsconfig.json \
+  BUILD_README.md \
+  $([ -f CHANGELOG.md ] && echo "CHANGELOG.md")
 
 echo "✅ Source code exported to: ${OUTPUT_FILE}"
 echo ""
