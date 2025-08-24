@@ -2,6 +2,7 @@
 [![Chrome Web Store Rating](https://img.shields.io/chrome-web-store/rating/mkiilhjbheleblbeegpbpnffkinapakn)](https://chromewebstore.google.com/detail/picpicker/mkiilhjbheleblbeegpbpnffkinapakn)
 [![Mozilla Add-on](https://img.shields.io/amo/v/picpicker?label=Firefox%20Add-on)](https://addons.mozilla.org/firefox/addon/picpicker/)
 [![Mozilla Add-on Rating](https://img.shields.io/amo/rating/picpicker)](https://addons.mozilla.org/firefox/addon/picpicker/)
+[![License](https://img.shields.io/github/license/flesler/picpicker)](LICENSE)
 
 # PicPicker - Universal Image Extractor
 

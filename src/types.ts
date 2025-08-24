@@ -85,7 +85,7 @@ export const DEFAULT_EXTRACTION_SETTINGS: ExtractionSettings = {
   includeAltText: true,
   includeVideoPoster: true,
   includeCanvas: false,
-  allowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
+  allowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'apng', 'ico', 'bmp'],
   skipDataUrls: true,
   maxImagesPerPage: 1000,
   extractionTimeout: 10000,
