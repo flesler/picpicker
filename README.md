@@ -14,7 +14,7 @@ A powerful browser extension that extracts **all images** from any webpage with 
 🔍 **Comprehensive** - Extracts from img tags, backgrounds, SVG, video posters, srcset, data-* attributes  
 👁️ **Viewport Detection** - Shows which images were visible when extracted  
 🎯 **Advanced Selection** - Shift+Click ranges, Ctrl+Click toggle, select all/none  
-📦 **ZIP Downloads** - Download multiple selected images as ZIP file  
+⚡ **Burst Downloads** - Download multiple selected images simultaneously  
 🔍 **Text Search** - Search alt text when enabled  
 ⚙️ **Customizable** - Filter by size, format, source type, visibility  
 🎨 **Modern UI** - Responsive grid, lightbox preview, hover tooltips  
@@ -160,7 +160,7 @@ DOM Scanning → Session Storage → Grid Display
 - **Filtering** - Format, size, source type, viewport visibility
 - **Text Search** - Alt text search (when enabled)
 - **Selection Modes** - Click, Shift+Click ranges, Ctrl+Click toggle
-- **Downloads** - Individual images or ZIP of selected images
+- **Downloads** - Individual images or burst download multiple selections
 - **Lightbox** - Full-size preview with metadata
 
 ### Keyboard Shortcuts

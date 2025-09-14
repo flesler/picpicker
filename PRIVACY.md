@@ -68,7 +68,7 @@ PicPicker uses Chrome's **"activeTab"** permission model, which means:
 - **`activeTab`**: To scan the current webpage only when you activate the extension
 - **`scripting`**: To inject image extraction code into the current tab
 - **`storage`**: To save your extension preferences locally
-- **`downloads`**: To enable ZIP file downloads of selected images
+- **`downloads`**: To enable downloading of selected images
 
 ### What We DON'T Request
 - ❌ **No "all websites" permissions** - Cannot access websites automatically
