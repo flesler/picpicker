@@ -11,7 +11,8 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "downloads"
   ],
   "action": {
     "default_popup": "popup.html",
