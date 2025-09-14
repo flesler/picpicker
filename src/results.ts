@@ -1,4 +1,3 @@
-import JSZip from 'jszip'
 import browser from 'webextension-polyfill'
 import { type DisplaySettings, type ExtractedImage, type GetSessionDataResponse, type ImageDisplayData, type PageInfo, DEFAULT_DISPLAY_SETTINGS, MessageAction } from './types.js'
 import { generateId, logger, TIMEOUTS, truncate } from './utils.js'
@@ -502,102 +501,29 @@ async function downloadSelectedImages() {
   const selected = filteredImages.filter(img => selectedImages.has(img.id))
   if (selected.length === 0) return
 
-  try {
-    const zip = new JSZip()
-    const results: { success: number; failed: number; failedUrls: string[] } = {
-      success: 0,
-      failed: 0,
-      failedUrls: [],
+  // Use burst downloads instead of ZIP - actually works on CORS-restricted sites
+  const results = { success: 0, failed: 0 }
+
+  for (const image of selected) {
+    try {
+      await browser.downloads.download({
+        url: image.u,
+        filename: generateFilename(image),
+        saveAs: false,
+      })
+      results.success++
+    } catch (error) {
+      logger.warn('Failed to download image:', image.u, error)
+      results.failed++
     }
-
-    // Add each image to the ZIP
-    for (let i = 0; i < selected.length; i++) {
-      const image = selected[i]
-      const success = await addImageToZip(zip, image, i + 1)
-      if (success) {
-        results.success++
-      } else {
-        results.failed++
-        results.failedUrls.push(image.u)
-      }
-    }
-
-    // Only create ZIP if we have some images
-    if (results.success === 0) {
-      alert('No images could be downloaded due to CORS restrictions. Try downloading individual images instead.')
-      return
-    }
-
-    // Generate ZIP file
-    const zipBlob = await zip.generateAsync({ type: 'blob' })
-    const url = URL.createObjectURL(zipBlob)
-
-    const now = new Date()
-    const timestamp = now.toISOString().slice(0, 19).replace(/[T:]/g, '-')
-    const siteName = currentPageInfo?.title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30) || 'images'
-    const filename = `${siteName}_${timestamp}.zip`
-
-    // Use browser.downloads API for consistency
-    await browser.downloads.download({
-      url: url,
-      filename: filename,
-      saveAs: false,
-    })
-
-    // Clean up blob URL after a delay
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-
-    // Show result summary
-    let message = `ZIP created with ${results.success} images`
-    if (results.failed > 0) {
-      message += `\n${results.failed} images couldn't be included due to CORS restrictions`
-    }
-    alert(message)
-
-    logger.info(`Downloaded ${results.success} of ${selected.length} images as ${filename}`)
-  } catch (error) {
-    logger.error('Failed to create ZIP', error)
-    alert(`Failed to create ZIP file: ${error}`)
-  }
-}
-
-async function addImageToZip(zip: JSZip, image: ImageDisplayData, index: number): Promise<boolean> {
-  try {
-    // Try no-cors first - might work for some servers
-    const response = await fetch(image.u, { mode: 'no-cors' })
-    const blob = await response.blob()
-
-    // If we got actual data (not opaque response), use it
-    if (blob.size > 0) {
-      const filename = generateZipFilename(image, index)
-      zip.file(filename, blob)
-      return true
-    }
-
-    // Opaque response - fallback to regular fetch for CORS-enabled resources
-    const fallbackResponse = await fetch(image.u)
-    if (!fallbackResponse.ok) throw new Error(`Failed to fetch: ${fallbackResponse.statusText}`)
-
-    const fallbackBlob = await fallbackResponse.blob()
-    const filename = generateZipFilename(image, index)
-    zip.file(filename, fallbackBlob)
-
-    return true
-  } catch (error) {
-    logger.warn(`Skipping CORS-blocked image ${index}:`, image.u)
-    return false
-  }
-}
-
-function getFileExtension(url: string, format: string): string {
-  // Try to get extension from URL first
-  const urlMatch = url.match(/\.([a-zA-Z]{2,4})(?:\?|$)/)
-  if (urlMatch) {
-    return urlMatch[1].toLowerCase()
   }
 
-  // Fall back to format
-  return format.toLowerCase()
+  // Show result summary
+  if (results.failed > 0) {
+    alert(`${results.failed} out of ${selected.length} images failed to download`)
+  }
+
+  logger.info(`Downloaded ${results.success} of ${selected.length} selected images`)
 }
 
 async function downloadCurrentImage() {
@@ -618,9 +544,8 @@ async function downloadImage(image: ImageDisplayData) {
       filename: generateFilename(image),
       saveAs: false,
     })
-    logger.info('Image download started', { url: image.u })
+    logger.info('Image downloaded', { url: image.u })
   } catch (error) {
-    logger.error('Failed to download image', error)
     alert(`Failed to download image: ${error}`)
   }
 }
@@ -647,30 +572,6 @@ function generateFilename(image: ImageDisplayData): string {
   const domain = currentPageInfo?.url ? new URL(currentPageInfo.url).hostname : 'webpage'
 
   return `${domain}-${timestamp}.${format}`
-}
-
-function generateZipFilename(image: ImageDisplayData, index: number): string {
-  const paddedIndex = index.toString().padStart(3, '0')
-
-  try {
-    // Try to extract original filename from URL
-    const url = new URL(image.u)
-    const pathname = url.pathname
-    const originalFilename = pathname.split('/').pop() || ''
-
-    // Check if filename has a valid extension
-    const hasExtension = /\.[a-zA-Z]{2,4}$/.test(originalFilename)
-    if (hasExtension && originalFilename.length > 0) {
-      // Prefix with index to avoid conflicts: "001_original_filename.jpg"
-      return `${paddedIndex}_${originalFilename}`
-    }
-  } catch (error) {
-    // Invalid URL, fallback to generic name
-  }
-
-  // Fallback to generic filename
-  const extension = getFileExtension(image.u, image.f || 'jpg')
-  return `image_${paddedIndex}.${extension}`
 }
 
 async function copyCurrentImageUrl() {
