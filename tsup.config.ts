@@ -1,5 +1,5 @@
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { copy } from 'esbuild-plugin-copy'
+import { readFileSync, writeFileSync } from 'fs'
 import { defineConfig } from 'tsup'
 
 export default defineConfig((options) => {
@@ -23,6 +23,11 @@ export default defineConfig((options) => {
     dts: false,
     treeshake: true,
     silent: !dts,
+    esbuildPlugins: [
+      copy({
+        assets: [{ from: ['src/public/**'], to: ['./'] }],
+      }),
+    ],
     esbuildOptions(options) {
       options.legalComments = 'none'
       options.drop = ['debugger']
@@ -37,7 +42,6 @@ export default defineConfig((options) => {
       return { js: '.js' }
     },
     async onSuccess() {
-      copyDirectory('src/public', 'dist')
       writeFileSync('dist/manifest.json', JSON.stringify(manifest, null, 2))
       if (!dts) {
         console.log(`${isFirefox ? 'Firefox' : 'Chrome'} extension build success`)
@@ -45,21 +49,6 @@ export default defineConfig((options) => {
     },
   }
 })
-
-function copyDirectory(src: string, dest: string) {
-  mkdirSync(dest, { recursive: true })
-  const items = readdirSync(src)
-  for (const item of items) {
-    const srcPath = join(src, item)
-    const destPath = join(dest, item)
-
-    if (statSync(srcPath).isDirectory()) {
-      copyDirectory(srcPath, destPath)
-    } else {
-      copyFileSync(srcPath, destPath)
-    }
-  }
-}
 
 function generateManifest(isFirefox = false) {
   const pkg = JSON.parse(readFileSync('package.json', 'utf-8'))
