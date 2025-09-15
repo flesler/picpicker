@@ -53,8 +53,9 @@ A powerful browser extension that extracts **all images** from any webpage with 
 ## 🚀 Quick Start
 
 ### Installation
-1. Download from Chrome Web Store *(coming soon)*
-2. Or build from source (see Development section)
+1. **[Chrome Web Store](https://chromewebstore.google.com/detail/picpicker/mkiilhjbheleblbeegpbpnffkinapakn)** - Chrome, Edge, and Chromium browsers
+2. **[Mozilla Add-ons](https://addons.mozilla.org/firefox/addon/picpicker/)** - Firefox browser
+3. Or build from source (see Development section)
 
 ### Usage
 1. **Visit any website** with images (works everywhere!)

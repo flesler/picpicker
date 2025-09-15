@@ -28,17 +28,17 @@ To build the exact Firefox extension package:
 
 ```bash
 # Build Firefox version
-FIREFOX=1 npm run build
+npm run build:firefox
 
 # The built extension will be in the 'dist/' directory
 ```
 
 ### Build Scripts Available
 
-- `npm run build` - Build Chrome version (default)
-- `FIREFOX=1 npm run build` - Build Firefox version
+- `npm run build:firefox` - Build Firefox version
+- `npm run build:prod:firefox` - Build Firefox version along the zip and another zip for the source code
 - `npm run dev` - Development build with watch mode
-- `npm run lint` - Run TypeScript type checking
+- `npm run lint:full` - Run TypeScript type checking
 
 ## Build Output
 
@@ -57,7 +57,6 @@ The build process will:
 ## Key Files
 
 - `tsup.config.ts` - Main build configuration
-- `src/domains.ts` - Generates content script domain matches
 - `package.json` - Contains Firefox extension ID (`gecko_id`)
 
 ## Firefox-Specific Build Differences
@@ -66,8 +65,7 @@ The Firefox build differs from Chrome in:
 
 1. **Manifest format**: Uses `background.scripts` instead of `service_worker`
 2. **Extension ID**: Includes `browser_specific_settings.gecko.id`
-3. **Runtime behavior**: Floating button disabled due to popup API limitations
-4. **Target compatibility**: Built for Firefox 109+
+3. **Target compatibility**: Built for Firefox 109+
 
 ## Verification
 
@@ -86,5 +84,5 @@ After building, verify the extension:
 
 The exact build command used for the submitted extension:
 ```bash
-FIREFOX=1 npm run build
+npm run build:prod:firefox
 ```

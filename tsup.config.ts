@@ -2,10 +2,11 @@ import { copy } from 'esbuild-plugin-copy'
 import { readFileSync, writeFileSync } from 'fs'
 import { defineConfig } from 'tsup'
 
-export default defineConfig((options) => {
-  const dts = options.dts !== false
+export default defineConfig(() => {
   const isFirefox = process.env.FIREFOX === '1'
   const manifest = generateManifest(isFirefox)
+  const prod = process.env.NODE_ENV === 'production'
+  const now = Date.now()
   return {
     entry: {
       background: 'src/background.ts',
@@ -18,11 +19,12 @@ export default defineConfig((options) => {
     platform: 'browser',
     target: isFirefox ? 'firefox109' : 'chrome91',
     outDir: 'dist',
-    clean: true,
-    minify: !options.watch,
     dts: false,
-    treeshake: true,
-    silent: !dts,
+    clean: prod,
+    minify: prod,
+    treeshake: prod,
+    silent: !prod,
+    env: { NODE_ENV: process.env.NODE_ENV || 'development' },
     esbuildPlugins: [
       copy({
         assets: [{ from: ['src/public/**'], to: ['./'] }],
@@ -43,8 +45,8 @@ export default defineConfig((options) => {
     },
     async onSuccess() {
       writeFileSync('dist/manifest.json', JSON.stringify(manifest, null, 2))
-      if (!dts) {
-        console.log(`${isFirefox ? 'Firefox' : 'Chrome'} extension build success`)
+      if (!prod) {
+        console.log(`${isFirefox ? 'Firefox' : 'Chrome'} extension build success in ${Date.now() - now}ms`)
       }
     },
   }

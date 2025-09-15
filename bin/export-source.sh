@@ -27,11 +27,5 @@ zip -r "${OUTPUT_FILE}" \
   $([ -f CHANGELOG.md ] && echo "CHANGELOG.md")
 
 echo "✅ Source code exported to: ${OUTPUT_FILE}"
-echo ""
-echo "📋 Submit this zip file to Mozilla with these details:"
-echo "   • Build command: npm run build:firefox"
-echo "   • Node.js requirement: v20+"
-echo "   • See BUILD_README.md for complete instructions"
-echo ""
-echo "🔍 Zip contents:"
+echo "📋 Submit this zip file to Mozilla. Zip contents:"
 unzip -l "${OUTPUT_FILE}"
