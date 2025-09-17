@@ -1,4 +1,5 @@
 import browser from 'webextension-polyfill'
+import env from './env.js'
 import type { MessageAction, Storage, StorageGet, StorageKeys } from './types.js'
 import { DEFAULT_USER_SETTINGS } from './types.js'
 
@@ -12,19 +13,20 @@ export const TIMEOUTS = {
 } as const
 
 // Logging utility to reduce repetition
+const prefix = `${env.NAME}@${env.VERSION}`
 export const logger = {
   info: (message: string, ...args: unknown[]) => {
-    console.log(`${extensionName}: ${message}`, ...args)
+    console.log(`${prefix}: ${message}`, ...args)
   },
   warn: (message: string, ...args: unknown[]) => {
-    console.warn(`${extensionName}: ${message}`, ...args)
+    console.warn(`${prefix}: ${message}`, ...args)
   },
   error: (message: string, error?: unknown) => {
-    console.error(`${extensionName}: ${message}`, error)
+    console.error(`${prefix}: ${message}`, error)
   },
   debug: (message: string, ...args: unknown[]) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.debug(`${extensionName}: ${message}`, ...args)
+    if (env.NODE_ENV === 'development') {
+      console.debug(`${prefix}: ${message}`, ...args)
     }
   },
 } as const
@@ -170,10 +172,3 @@ export async function getStorage<K extends StorageKeys>(keys: K[]): Promise<Stor
 export async function setStorage<K extends StorageKeys>(data: Partial<Pick<Storage, K>>): Promise<void> {
   return browser.storage.sync.set(data)
 }
-
-// Browser detection
-declare const FIREFOX: string
-declare const NAME: string
-
-export const isFirefox = FIREFOX === '1'
-export const extensionName = NAME

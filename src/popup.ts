@@ -1,5 +1,6 @@
 // Import webextension-polyfill for consistent promise-based APIs
 import browser from 'webextension-polyfill'
+import env from './env.js'
 import type { UserSettings } from './types.js'
 import { DEFAULT_USER_SETTINGS, MessageAction } from './types.js'
 import { logger, TIMEOUTS } from './utils.js'
@@ -7,6 +8,10 @@ import { logger, TIMEOUTS } from './utils.js'
 let currentSettings: UserSettings = DEFAULT_USER_SETTINGS
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const titleElement = document.querySelector('h1')
+  if (titleElement) {
+    titleElement.textContent = `${env.NAME} v${env.VERSION}`
+  }
   await loadSettings()
   setupEventListeners()
 })

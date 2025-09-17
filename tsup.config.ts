@@ -24,7 +24,11 @@ export default defineConfig(() => {
     minify: prod,
     treeshake: prod,
     silent: !prod,
-    env: { NODE_ENV: process.env.NODE_ENV || 'development' },
+    define: {
+      NAME: JSON.stringify(manifest.name),
+      VERSION: JSON.stringify(manifest.version),
+      NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'development'),
+    },
     esbuildPlugins: [
       copy({
         assets: [{ from: ['src/public/**'], to: ['./'] }],
@@ -34,11 +38,6 @@ export default defineConfig(() => {
       options.legalComments = 'none'
       options.drop = ['debugger']
       options.entryNames = '[name]'
-      // Inject Firefox flag into the bundle
-      options.define = {
-        FIREFOX: JSON.stringify(process.env.FIREFOX || '0'),
-        NAME: JSON.stringify(`${manifest.name}@${manifest.version}`),
-      }
     },
     outExtension() {
       return { js: '.js' }
@@ -56,11 +55,7 @@ function generateManifest(isFirefox = false) {
   const pkg = JSON.parse(readFileSync('package.json', 'utf-8'))
   const manifest = JSON.parse(readFileSync('src/public/manifest.json', 'utf-8'))
 
-  const name = (pkg.name as string).split(/[_-]/)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-
-  manifest.name = manifest.action.default_title = name
+  manifest.name = manifest.action.default_title = pkg.displayName
   manifest.version = pkg.version
   manifest.description = pkg.description
 

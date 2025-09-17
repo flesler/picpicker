@@ -2,6 +2,7 @@
   "name": "picpicker",
   "version": "1.2.0",
   "author": "Ariel Flesler <aflesler@gmail.com>",
+  "displayName": "Picpicker",
   "gecko_id": "picpicker@flesler.com",
   "type": "module",
   "description": "Privacy-first browser extension to extract all images from any webpage with one click",
