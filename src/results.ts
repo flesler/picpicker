@@ -6,6 +6,7 @@ let allImages: ImageDisplayData[] = []
 let filteredImages: ImageDisplayData[] = []
 let selectedImages = new Set<string>()
 let rangeStartIndex = -1 // For shift-click range start tracking
+let currentImageIndex = 0 // For keyboard navigation focus
 let currentPageInfo: PageInfo | null = null
 let displaySettings: DisplaySettings = DEFAULT_DISPLAY_SETTINGS
 
@@ -151,10 +152,38 @@ function setupEventListeners() {
     if (e.ctrlKey && e.key === 'a') {
       e.preventDefault()
       selectAllImages()
+      return
     }
     if (e.key === 'Escape') {
       e.preventDefault()
       closeLightbox()
+      return
+    }
+
+    // Arrow key navigation and spacebar toggle
+    if (filteredImages.length > 0) {
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault()
+          navigateToImage((currentImageIndex + 1) % filteredImages.length)
+          break
+        case 'ArrowLeft':
+          e.preventDefault()
+          navigateToImage((currentImageIndex - 1 + filteredImages.length) % filteredImages.length)
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          navigateVertically(1)
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          navigateVertically(-1)
+          break
+        case ' ':
+          e.preventDefault()
+          toggleCurrentImage()
+          break
+      }
     }
   })
 
@@ -244,6 +273,10 @@ function applyFilters() {
   })
 
   updateImageCount()
+
+  // Reset current image index when filters change
+  currentImageIndex = 0
+
   renderImages()
 }
 
@@ -279,6 +312,9 @@ function renderImages() {
     const item = createImageItem(image)
     grid.appendChild(item)
   })
+
+  // Update focus after rendering
+  updateImageFocus()
 }
 
 function createImageItem(image: ImageDisplayData): HTMLElement {
@@ -393,12 +429,17 @@ function handleImageSelection(imageId: string, currentIndex: number, isShiftClic
 // Update only selection count and bulk actions (no checkbox changes)
 function updateSelectionCount() {
   const selectedCount = selectedImages.size
-  const bulkActions = document.getElementById('bulkActions')
+  const shortcutsContent = document.getElementById('shortcutsContent')
+  const bulkActionsContent = document.getElementById('bulkActionsContent')
   const selectedCountElement = document.getElementById('selectedCount')
   const downloadButton = document.getElementById('downloadSelected') as HTMLButtonElement
 
-  if (bulkActions) {
-    bulkActions.classList.toggle('active', selectedCount > 0)
+  const hasSelection = selectedCount > 0
+
+  // Toggle content within the same container
+  if (shortcutsContent && bulkActionsContent) {
+    shortcutsContent.style.display = hasSelection ? 'none' : 'block'
+    bulkActionsContent.style.display = hasSelection ? 'block' : 'none'
   }
 
   if (selectedCountElement) {
@@ -593,6 +634,141 @@ async function copyCurrentImageUrl() {
       }
     } catch (error) {
       logger.error('Failed to copy URL', error)
+    }
+  }
+}
+
+function navigateToImage(newIndex: number) {
+  // Update current index
+  currentImageIndex = Math.max(0, Math.min(newIndex, filteredImages.length - 1))
+
+  // Update visual focus
+  updateImageFocus()
+
+  // Scroll current image into view
+  scrollCurrentImageIntoView()
+}
+
+function navigateVertically(direction: 1 | -1) {
+  const columnsCount = calculateGridColumns()
+  if (columnsCount <= 1) {
+    // Fallback to sequential navigation if grid calculation fails
+    navigateToImage((currentImageIndex + direction + filteredImages.length) % filteredImages.length)
+    return
+  }
+
+  const currentRow = Math.floor(currentImageIndex / columnsCount)
+  const currentCol = currentImageIndex % columnsCount
+
+  let targetRow = currentRow + direction
+  let targetIndex: number
+
+  if (direction === 1) {
+    // Moving down
+    if (targetRow * columnsCount + currentCol >= filteredImages.length) {
+      // Wrap to first row, same column
+      targetIndex = currentCol
+    } else {
+      targetIndex = targetRow * columnsCount + currentCol
+    }
+  } else {
+    // Moving up
+    if (targetRow < 0) {
+      // Wrap to last row, same column
+      const lastRow = Math.floor((filteredImages.length - 1) / columnsCount)
+      targetIndex = lastRow * columnsCount + currentCol
+      // Make sure we don't go beyond array bounds
+      if (targetIndex >= filteredImages.length) {
+        targetIndex = filteredImages.length - 1
+      }
+    } else {
+      targetIndex = targetRow * columnsCount + currentCol
+    }
+  }
+
+  navigateToImage(targetIndex)
+}
+
+function calculateGridColumns(): number {
+  const grid = document.getElementById('imageGrid')
+  if (!grid) return 1
+
+  // Get the first two image items to calculate column width
+  const items = grid.querySelectorAll('.image-item')
+  if (items.length < 2) return 1
+
+  const firstItem = items[0] as HTMLElement
+  const secondItem = items[1] as HTMLElement
+
+  const firstRect = firstItem.getBoundingClientRect()
+  const secondRect = secondItem.getBoundingClientRect()
+
+  // If second item is on the same row (similar top position), count items in first row
+  if (Math.abs(firstRect.top - secondRect.top) < 10) {
+    // Count items in the first row
+    let columnsCount = 1
+    for (let i = 1; i < items.length; i++) {
+      const itemRect = (items[i] as HTMLElement).getBoundingClientRect()
+      if (Math.abs(itemRect.top - firstRect.top) < 10) {
+        columnsCount++
+      } else {
+        break
+      }
+    }
+    return columnsCount
+  }
+
+  // If only one item in first row, return 1
+  return 1
+}
+
+function toggleCurrentImage() {
+  if (filteredImages.length === 0) return
+
+  const currentImage = filteredImages[currentImageIndex]
+  if (!currentImage) return
+
+  // Use existing selection logic, reusing the DRY principle
+  const isNowSelected = !selectedImages.has(currentImage.id)
+  if (isNowSelected) {
+    selectedImages.add(currentImage.id)
+  } else {
+    selectedImages.delete(currentImage.id)
+  }
+
+  // Update range start for future shift-clicks
+  rangeStartIndex = currentImageIndex
+
+  // Update UI
+  updateSelectionUI()
+}
+
+function updateImageFocus() {
+  // Remove focus class from all items
+  document.querySelectorAll('.image-item').forEach(item => {
+    item.classList.remove('focused')
+  })
+
+  // Add focus class to current item
+  if (filteredImages[currentImageIndex]) {
+    const currentImageId = filteredImages[currentImageIndex].id
+    const currentElement = document.querySelector(`[data-image-id="${currentImageId}"]`)
+    if (currentElement) {
+      currentElement.classList.add('focused')
+    }
+  }
+}
+
+function scrollCurrentImageIntoView() {
+  if (filteredImages[currentImageIndex]) {
+    const currentImageId = filteredImages[currentImageIndex].id
+    const currentElement = document.querySelector(`[data-image-id="${currentImageId}"]`)
+    if (currentElement) {
+      currentElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      })
     }
   }
 }
