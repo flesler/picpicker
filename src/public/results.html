@@ -146,13 +146,16 @@
       padding: 1rem;
       margin-bottom: 2rem;
       border: 1px solid #e2e8f0;
-      min-height: 4rem;
+      height: 4.5rem;
+      display: flex;
+      align-items: center;
       transition: all 0.3s ease;
     }
 
     .shortcuts-content {
       font-size: 0.875rem;
       color: #475569;
+      width: 100%;
     }
 
     .shortcuts-content p {
@@ -226,6 +229,18 @@
       outline: none;
     }
 
+    /* Remove blue selection border for downloaded images */
+    .image-item:has(.image-checkbox.downloaded) {
+      box-shadow: none !important;
+    }
+
+    /* Keep focus outline for downloaded images but without selection border */
+    .image-item.focused:has(.image-checkbox.downloaded) {
+      outline: 3px solid #f59e0b !important;
+      outline-offset: 2px;
+      box-shadow: none !important;
+    }
+
     .image-container {
       position: relative;
       aspect-ratio: 1;
@@ -252,6 +267,45 @@
       width: 1.25rem;
       height: 1.25rem;
       cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      border: 2px solid #d1d5db;
+      border-radius: 3px;
+      background: white;
+    }
+
+    .image-checkbox:checked {
+      background: #3b82f6;
+      border-color: #3b82f6;
+    }
+
+    .image-checkbox:checked:after {
+      content: '✓';
+      color: white;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    .image-checkbox.downloaded {
+      background: #22c55e !important;
+      border-color: #22c55e !important;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .image-checkbox.downloaded:after {
+      content: '✓';
+      color: white;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.9rem;
+      font-weight: bold;
     }
 
     .image-info {
@@ -352,13 +406,14 @@
 
     .bulk-actions-content {
       display: none;
-    }
-
-    .bulk-actions-content {
-      display: flex;
+      width: 100%;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
+    }
+
+    .bulk-actions-content[style*="block"] {
+      display: flex !important;
     }
 
     .selection-info {
