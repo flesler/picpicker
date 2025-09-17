@@ -5,6 +5,7 @@ import { generateId, logger, TIMEOUTS, truncate } from './utils.js'
 let allImages: ImageDisplayData[] = []
 let filteredImages: ImageDisplayData[] = []
 let selectedImages = new Set<string>()
+let downloadedImages = new Set<string>() // Track downloaded images to avoid duplicates
 let rangeStartIndex = -1 // For shift-click range start tracking
 let currentImageIndex = 0 // For keyboard navigation focus
 let currentPageInfo: PageInfo | null = null
@@ -185,7 +186,7 @@ function setupEventListeners() {
           break
         case 'Enter':
           e.preventDefault()
-          downloadCurrentFocusedImage()
+          handleEnterDownload()
           break
         case 'Home':
           e.preventDefault()
@@ -335,14 +336,19 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
   item.dataset.imageId = image.id
 
   const isSelected = selectedImages.has(image.id)
+  const isDownloaded = downloadedImages.has(image.u)
+
   if (isSelected) item.classList.add('selected')
 
   const altText = image.a || ''
   const tooltipAttr = altText ? `title="${altText.replace(/"/g, '&quot;')}"` : ''
 
+  const checkboxClass = isDownloaded ? 'image-checkbox downloaded' : 'image-checkbox'
+  const checkboxChecked = isDownloaded ? 'checked disabled' : (isSelected ? 'checked' : '')
+
   item.innerHTML = `
     <div class="image-container">
-      <input type="checkbox" class="image-checkbox" ${isSelected ? 'checked' : ''}>
+      <input type="checkbox" class="${checkboxClass}" ${checkboxChecked}>
       <img src="${image.u}" alt="${altText}" ${tooltipAttr} loading="lazy">
     </div>
     <div class="image-info">
@@ -365,29 +371,12 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
 
     if (shouldToggleSelection) {
       e.stopPropagation()
-      // Toggle selection state
-      const isNowSelected = !selectedImages.has(image.id)
-      if (isNowSelected) {
-        selectedImages.add(image.id)
-      } else {
-        selectedImages.delete(image.id)
-      }
 
-      // Update UI for this item only
-      item.classList.toggle('selected', isNowSelected)
-      if (checkbox) {
-        checkbox.checked = isNowSelected
-      }
-
-      // Update selection count
-      updateSelectionCount()
-
-      // Update range start for future shift-clicks and keyboard focus
       const clickedIndex = filteredImages.findIndex(img => img.id === image.id)
-      rangeStartIndex = clickedIndex
-      currentImageIndex = clickedIndex
+      toggleImageSelection(image, clickedIndex)
 
-      // Update focus to match the clicked image
+      // Update keyboard focus to the clicked image
+      currentImageIndex = clickedIndex
       updateImageFocus()
 
     } else if (isShiftClick && rangeStartIndex >= 0) {
@@ -488,7 +477,11 @@ function updateSelectionUI() {
 }
 
 function selectAllImages() {
-  filteredImages.forEach(image => selectedImages.add(image.id))
+  filteredImages.forEach(image => {
+    if (canSelectImage(image)) {
+      selectedImages.add(image.id)
+    }
+  })
   rangeStartIndex = 0 // Range start from first image
   updateSelectionUI()
 }
@@ -562,16 +555,25 @@ async function downloadSelectedImages() {
   const selected = filteredImages.filter(img => selectedImages.has(img.id))
   if (selected.length === 0) return
 
-  // Use burst downloads instead of ZIP - actually works on CORS-restricted sites
-  const results = { success: 0, failed: 0 }
+  // Filter out already downloaded images
+  const toDownload = selected.filter(img => !downloadedImages.has(img.u))
+  const alreadyDownloaded = selected.length - toDownload.length
 
-  for (const image of selected) {
+  if (toDownload.length === 0) {
+    return
+  }
+
+  // Use burst downloads instead of ZIP - actually works on CORS-restricted sites
+  const results = { success: 0, failed: 0, skipped: alreadyDownloaded }
+
+  for (const image of toDownload) {
     try {
       await browser.downloads.download({
         url: image.u,
         filename: generateFilename(image),
         saveAs: false,
       })
+      downloadedImages.add(image.u) // Track as downloaded
       results.success++
     } catch (error) {
       logger.warn('Failed to download image:', image.u, error)
@@ -579,12 +581,10 @@ async function downloadSelectedImages() {
     }
   }
 
-  // Show result summary
-  if (results.failed > 0) {
-    alert(`${results.failed} out of ${selected.length} images failed to download`)
-  }
+  logger.info(`Download results: ${results.success} success, ${results.failed} failed, ${results.skipped} skipped`)
 
-  logger.info(`Downloaded ${results.success} of ${selected.length} selected images`)
+  // Update UI to show downloaded state
+  updateDownloadedUI()
 }
 
 async function downloadCurrentImage() {
@@ -605,9 +605,13 @@ async function downloadImage(image: ImageDisplayData) {
       filename: generateFilename(image),
       saveAs: false,
     })
+    downloadedImages.add(image.u) // Track as downloaded
     logger.info('Image downloaded', { url: image.u })
+
+    // Update UI to show downloaded state
+    updateDownloadedUI()
   } catch (error) {
-    alert(`Failed to download image: ${error}`)
+    logger.error('Failed to download image:', error)
   }
 }
 
@@ -748,16 +752,27 @@ function toggleCurrentImage() {
   const currentImage = filteredImages[currentImageIndex]
   if (!currentImage) return
 
-  // Use existing selection logic, reusing the DRY principle
-  const isNowSelected = !selectedImages.has(currentImage.id)
+  toggleImageSelection(currentImage, currentImageIndex)
+}
+
+function canSelectImage(image: ImageDisplayData): boolean {
+  return !downloadedImages.has(image.u)
+}
+
+function toggleImageSelection(image: ImageDisplayData, currentIndex: number) {
+  if (!canSelectImage(image)) {
+    return // Don't allow selecting downloaded images
+  }
+
+  const isNowSelected = !selectedImages.has(image.id)
   if (isNowSelected) {
-    selectedImages.add(currentImage.id)
+    selectedImages.add(image.id)
   } else {
-    selectedImages.delete(currentImage.id)
+    selectedImages.delete(image.id)
   }
 
   // Update range start for future shift-clicks
-  rangeStartIndex = currentImageIndex
+  rangeStartIndex = currentIndex
 
   // Update UI
   updateSelectionUI()
@@ -779,6 +794,32 @@ function updateImageFocus() {
   }
 }
 
+function updateDownloadedUI() {
+  // Update all image items to show downloaded state and deselect them
+  document.querySelectorAll('.image-item').forEach(item => {
+    const imageId = item.getAttribute('data-image-id')
+    if (imageId) {
+      const image = filteredImages.find(img => img.id === imageId)
+      if (image && downloadedImages.has(image.u)) {
+        // Remove from selection when downloaded
+        selectedImages.delete(image.id)
+
+        // Update visual state
+        item.classList.remove('selected')
+        const checkbox = item.querySelector('.image-checkbox') as HTMLInputElement
+        if (checkbox && !checkbox.classList.contains('downloaded')) {
+          checkbox.classList.add('downloaded')
+          checkbox.checked = true
+          checkbox.disabled = true
+        }
+      }
+    }
+  })
+
+  // Update selection count after removing downloaded images
+  updateSelectionCount()
+}
+
 function scrollCurrentImageIntoView() {
   if (filteredImages[currentImageIndex]) {
     const currentImageId = filteredImages[currentImageIndex].id
@@ -793,13 +834,31 @@ function scrollCurrentImageIntoView() {
   }
 }
 
-function downloadCurrentFocusedImage() {
+function handleEnterDownload() {
   if (filteredImages.length === 0) return
 
   const currentImage = filteredImages[currentImageIndex]
-  if (currentImage) {
-    downloadImage(currentImage)
+  if (!currentImage) return
+
+  const isCurrentSelected = selectedImages.has(currentImage.id)
+
+  if (isCurrentSelected) {
+    // Current image is selected → download all selected
+    downloadSelectedImages()
+  } else {
+    // Current image is NOT selected → download just current
+    downloadSingleImage(currentImage)
   }
+}
+
+function downloadSingleImage(image: ImageDisplayData) {
+  // Check if already downloaded
+  if (downloadedImages.has(image.u)) {
+    logger.info('Image already downloaded, skipping:', image.u)
+    return
+  }
+
+  downloadImage(image)
 }
 
 function showError(message: string) {
