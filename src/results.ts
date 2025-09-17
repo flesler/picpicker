@@ -187,6 +187,14 @@ function setupEventListeners() {
           e.preventDefault()
           downloadCurrentFocusedImage()
           break
+        case 'Home':
+          e.preventDefault()
+          navigateToImage(0)
+          break
+        case 'End':
+          e.preventDefault()
+          navigateToImage(filteredImages.length - 1)
+          break
       }
     }
   })
@@ -374,15 +382,23 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
       // Update selection count
       updateSelectionCount()
 
-      // Update range start for future shift-clicks
-      const currentIndex = filteredImages.findIndex(img => img.id === image.id)
-      rangeStartIndex = currentIndex
+      // Update range start for future shift-clicks and keyboard focus
+      const clickedIndex = filteredImages.findIndex(img => img.id === image.id)
+      rangeStartIndex = clickedIndex
+      currentImageIndex = clickedIndex
+
+      // Update focus to match the clicked image
+      updateImageFocus()
 
     } else if (isShiftClick && rangeStartIndex >= 0) {
       // SHIFT+CLICK: Range selection
       e.stopPropagation()
-      const currentIndex = filteredImages.findIndex(img => img.id === image.id)
-      handleImageSelection(image.id, currentIndex, true, false)
+      const clickedIndex = filteredImages.findIndex(img => img.id === image.id)
+      handleImageSelection(image.id, clickedIndex, true, false)
+
+      // Update keyboard focus to the clicked image
+      currentImageIndex = clickedIndex
+      updateImageFocus()
 
     } else if (e.target === img || e.target === item) {
       // NORMAL CLICK: Open lightbox (only for image or item background)
