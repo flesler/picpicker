@@ -71,6 +71,8 @@ function generateManifest(isFirefox = false) {
       gecko: {
         id: pkg.gecko_id,
         strict_min_version: '109.0',
+        // Ready for their spec
+        data_collection_permissions: { required: ['none'] },
       },
     }
   } else {
