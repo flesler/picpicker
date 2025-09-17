@@ -109,7 +109,7 @@ function updatePageInfo() {
 
   const titleElement = getElement('pageTitle')
   const countElement = getElement('imageCount')
-  const urlElement = getElement('pageUrl')
+  const urlElement = getElement<HTMLAnchorElement>('pageUrl')
 
   if (titleElement) {
     const fullTitle = `Images from ${currentPageInfo.title}`
@@ -123,8 +123,8 @@ function updatePageInfo() {
 
   if (urlElement) {
     const truncatedUrl = truncate(currentPageInfo.url, 50)
-    urlElement.innerHTML = `<a href="${currentPageInfo.url}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: underline;">${truncatedUrl}</a>`
-    urlElement.title = currentPageInfo.url
+    urlElement.href = urlElement.title = currentPageInfo.url
+    urlElement.textContent = truncatedUrl
   }
 }
 
@@ -460,28 +460,57 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
   if (isSelected) item.classList.add('selected')
 
   const altText = image.a || ''
-  const tooltipAttr = altText ? `title="${altText.replace(/"/g, '&quot;')}"` : ''
-
   const checkboxClass = isDownloaded ? 'image-checkbox downloaded' : 'image-checkbox'
-  const checkboxChecked = isDownloaded ? 'checked disabled' : (isSelected ? 'checked' : '')
 
-  item.innerHTML = `
-    <div class="image-container">
-      <input type="checkbox" class="${checkboxClass}" ${checkboxChecked}>
-      <img src="${image.u}" alt="${altText}" ${tooltipAttr} loading="lazy">
-    </div>
-    <div class="image-info">
-      <div class="size">${image.w || '?'} × ${image.h || '?'}</div>
-      <span class="format">${(image.f || 'unknown').toUpperCase()}</span>
-    </div>
-  `
+  // Create image container
+  const imageContainer = document.createElement('div')
+  imageContainer.className = 'image-container'
+
+  const checkbox = document.createElement('input')
+  checkbox.type = 'checkbox'
+  checkbox.className = checkboxClass
+  if (isDownloaded) {
+    checkbox.checked = true
+    checkbox.disabled = true
+  } else if (isSelected) {
+    checkbox.checked = true
+  }
+
+  const img = document.createElement('img')
+  img.src = image.u
+  img.alt = altText
+  img.loading = 'lazy'
+  if (altText) {
+    img.title = altText
+  }
+
+  imageContainer.appendChild(checkbox)
+  imageContainer.appendChild(img)
+
+  // Create image info
+  const imageInfo = document.createElement('div')
+  imageInfo.className = 'image-info'
+
+  const sizeDiv = document.createElement('div')
+  sizeDiv.className = 'size'
+  sizeDiv.textContent = `${image.w || '?'} × ${image.h || '?'}`
+
+  const formatSpan = document.createElement('span')
+  formatSpan.className = 'format'
+  formatSpan.textContent = (image.f || 'unknown').toUpperCase()
+
+  imageInfo.appendChild(sizeDiv)
+  imageInfo.appendChild(formatSpan)
+
+  item.appendChild(imageContainer)
+  item.appendChild(imageInfo)
 
   // Single unified click handler for the entire item
-  const checkbox = item.querySelector('.image-checkbox') as HTMLInputElement
-  const img = item.querySelector('img')
+  const checkboxEl = item.querySelector('.image-checkbox') as HTMLInputElement
+  // const imgEl = item.querySelector('img') // Not needed since we use openLightbox
 
   item.addEventListener('click', (e) => {
-    const isCheckboxClick = e.target === checkbox
+    const isCheckboxClick = e.target === checkboxEl
     const isCtrlClick = e.ctrlKey || e.metaKey
     const isShiftClick = e.shiftKey
 
@@ -638,13 +667,58 @@ function openLightbox(image: ImageDisplayData) {
   lightboxImage.src = image.u
   lightboxImage.alt = image.a || ''
 
-  metadata.innerHTML = `
-    <div><strong>URL:</strong> <a href="${image.u}" target="_blank" rel="noopener noreferrer" style="word-break: break-all; color: #3b82f6; text-decoration: underline;">${image.u}</a></div>
-    <div><strong>Dimensions:</strong> ${image.w || '?'} × ${image.h || '?'}</div>
-    <div><strong>Format:</strong> ${(image.f || 'unknown').toUpperCase()}</div>
-    <div><strong>Source:</strong> ${getSourceLabel(image.s)}</div>
-    ${image.a ? `<div><strong>Alt text:</strong> ${image.a}</div>` : ''}
-  `
+  metadata.textContent = ''
+
+  // URL row
+  const urlDiv = document.createElement('div')
+  const urlLabel = document.createElement('strong')
+  urlLabel.textContent = 'URL: '
+  const urlLink = document.createElement('a')
+  urlLink.href = image.u
+  urlLink.target = '_blank'
+  urlLink.rel = 'noopener noreferrer'
+  urlLink.style.wordBreak = 'break-all'
+  urlLink.style.color = '#3b82f6'
+  urlLink.style.textDecoration = 'underline'
+  urlLink.textContent = image.u
+  urlDiv.appendChild(urlLabel)
+  urlDiv.appendChild(urlLink)
+
+  // Dimensions row
+  const dimensionsDiv = document.createElement('div')
+  const dimensionsLabel = document.createElement('strong')
+  dimensionsLabel.textContent = 'Dimensions: '
+  dimensionsDiv.appendChild(dimensionsLabel)
+  dimensionsDiv.appendChild(document.createTextNode(`${image.w || '?'} × ${image.h || '?'}`))
+
+  // Format row
+  const formatDiv = document.createElement('div')
+  const formatLabel = document.createElement('strong')
+  formatLabel.textContent = 'Format: '
+  formatDiv.appendChild(formatLabel)
+  formatDiv.appendChild(document.createTextNode((image.f || 'unknown').toUpperCase()))
+
+  // Source row
+  const sourceDiv = document.createElement('div')
+  const sourceLabel = document.createElement('strong')
+  sourceLabel.textContent = 'Source: '
+  sourceDiv.appendChild(sourceLabel)
+  sourceDiv.appendChild(document.createTextNode(getSourceLabel(image.s)))
+
+  metadata.appendChild(urlDiv)
+  metadata.appendChild(dimensionsDiv)
+  metadata.appendChild(formatDiv)
+  metadata.appendChild(sourceDiv)
+
+  // Alt text row (optional)
+  if (image.a) {
+    const altDiv = document.createElement('div')
+    const altLabel = document.createElement('strong')
+    altLabel.textContent = 'Alt text: '
+    altDiv.appendChild(altLabel)
+    altDiv.appendChild(document.createTextNode(image.a))
+    metadata.appendChild(altDiv)
+  }
 
   lightbox.classList.add('active')
 
@@ -1008,11 +1082,18 @@ function downloadSingleImage(image: ImageDisplayData) {
 function showError(message: string) {
   const loading = getElement('loading')
   if (loading) {
-    loading.innerHTML = `
-      <div style="color: #ef4444;">
-        <h3>Error</h3>
-        <p>${message}</p>
-      </div>
-    `
+    loading.textContent = ''
+    const errorDiv = document.createElement('div')
+    errorDiv.style.color = '#ef4444'
+
+    const heading = document.createElement('h3')
+    heading.textContent = 'Error'
+
+    const paragraph = document.createElement('p')
+    paragraph.textContent = message
+
+    errorDiv.appendChild(heading)
+    errorDiv.appendChild(paragraph)
+    loading.appendChild(errorDiv)
   }
 }
