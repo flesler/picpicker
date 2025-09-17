@@ -77,9 +77,18 @@ async function initializePage() {
   applyFilters()
   renderImages()
 
+  // Restore saved grid size
+  restoreGridSize()
+
   // Hide loading
   const loading = document.getElementById('loading')
   if (loading) loading.style.display = 'none'
+}
+
+function restoreGridSize() {
+  // Use saved size or default to medium
+  const savedSize = displaySettings.thumbnailSize || 'medium'
+  setGridSize(savedSize)
 }
 
 function convertToDisplayData(image: ExtractedImage): ImageDisplayData {
