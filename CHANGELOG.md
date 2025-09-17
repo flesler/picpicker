@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.2.1](https://github.com/flesler/picpicker/compare/v1.2.0...v1.2.1)
+
+- Various improvements related to the build process [`d6fda83`](https://github.com/flesler/picpicker/commit/d6fda83b8e79674a63343153a3baf502bb92450e)
+- Extract the browser-polyfill.js as a vendor script. Loaded once instead of bundled on each of the 4 .js's [`38f2dfb`](https://github.com/flesler/picpicker/commit/38f2dfbf95f417cdf4bb63b9199ae7515feed97a)
+
 #### [v1.2.0](https://github.com/flesler/picpicker/compare/v1.1.0...v1.2.0)
 
 - Update the md files after dropping the ZIP download aspect [`58b7608`](https://github.com/flesler/picpicker/commit/58b76089b66f8b77b81293f425ff7c8ca5cf4c78)
