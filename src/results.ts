@@ -183,6 +183,10 @@ function setupEventListeners() {
           e.preventDefault()
           toggleCurrentImage()
           break
+        case 'Enter':
+          e.preventDefault()
+          downloadCurrentFocusedImage()
+          break
       }
     }
   })
@@ -770,6 +774,15 @@ function scrollCurrentImageIntoView() {
         inline: 'nearest',
       })
     }
+  }
+}
+
+function downloadCurrentFocusedImage() {
+  if (filteredImages.length === 0) return
+
+  const currentImage = filteredImages[currentImageIndex]
+  if (currentImage) {
+    downloadImage(currentImage)
   }
 }
 
