@@ -1,12 +1,12 @@
 import env from './env.js'
 import type { UserSettings } from './types.js'
 import { DEFAULT_USER_SETTINGS, MessageAction } from './types.js'
-import { logger, TIMEOUTS } from './utils.js'
+import { addEvent, getElement, logger, querySelector, TIMEOUTS } from './utils.js'
 
 let currentSettings: UserSettings = DEFAULT_USER_SETTINGS
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const titleElement = document.querySelector('h1')
+  const titleElement = querySelector('h1')
   if (titleElement) {
     titleElement.textContent = `${env.NAME} v${env.VERSION}`
   }
@@ -28,23 +28,23 @@ async function loadSettings() {
 
 function updateSettingsUI() {
   // Update min size setting
-  const minSizeSelect = document.getElementById('minSize') as HTMLSelectElement
+  const minSizeSelect = getElement<HTMLSelectElement>('minSize')
   if (minSizeSelect) {
     minSizeSelect.value = currentSettings.extraction.minWidth.toString()
   }
 
   // Update checkbox settings
-  const includeBackgrounds = document.getElementById('includeBackgrounds') as HTMLInputElement
+  const includeBackgrounds = getElement<HTMLInputElement>('includeBackgrounds')
   if (includeBackgrounds) {
     includeBackgrounds.checked = currentSettings.extraction.includeBackgrounds
   }
 
-  const includeSvg = document.getElementById('includeSvg') as HTMLInputElement
+  const includeSvg = getElement<HTMLInputElement>('includeSvg')
   if (includeSvg) {
     includeSvg.checked = currentSettings.extraction.includeSvg
   }
 
-  const includeAltText = document.getElementById('includeAltText') as HTMLInputElement
+  const includeAltText = getElement<HTMLInputElement>('includeAltText')
   if (includeAltText) {
     includeAltText.checked = currentSettings.extraction.includeAltText
   }
@@ -52,29 +52,21 @@ function updateSettingsUI() {
 
 function setupEventListeners() {
   // Extract button
-  const extractButton = document.getElementById('extractImages')
-  extractButton?.addEventListener('click', handleExtractImages)
+  addEvent('extractImages', 'click', handleExtractImages)
 
   // Settings event listeners
-  const minSizeSelect = document.getElementById('minSize')
-  minSizeSelect?.addEventListener('change', handleSettingsChange)
-
-  const includeBackgrounds = document.getElementById('includeBackgrounds')
-  includeBackgrounds?.addEventListener('change', handleSettingsChange)
-
-  const includeSvg = document.getElementById('includeSvg')
-  includeSvg?.addEventListener('change', handleSettingsChange)
-
-  const includeAltText = document.getElementById('includeAltText')
-  includeAltText?.addEventListener('change', handleSettingsChange)
+  addEvent('minSize', 'change', handleSettingsChange)
+  addEvent('includeBackgrounds', 'change', handleSettingsChange)
+  addEvent('includeSvg', 'change', handleSettingsChange)
+  addEvent('includeAltText', 'change', handleSettingsChange)
 }
 
 async function handleSettingsChange() {
   // Get current values from UI
-  const minSizeSelect = document.getElementById('minSize') as HTMLSelectElement
-  const includeBackgrounds = document.getElementById('includeBackgrounds') as HTMLInputElement
-  const includeSvg = document.getElementById('includeSvg') as HTMLInputElement
-  const includeAltText = document.getElementById('includeAltText') as HTMLInputElement
+  const minSizeSelect = getElement<HTMLSelectElement>('minSize')
+  const includeBackgrounds = getElement<HTMLInputElement>('includeBackgrounds')
+  const includeSvg = getElement<HTMLInputElement>('includeSvg')
+  const includeAltText = getElement<HTMLInputElement>('includeAltText')
 
   // Update settings object
   currentSettings.extraction.minWidth = parseInt(minSizeSelect?.value || '50')
@@ -124,9 +116,9 @@ async function handleExtractImages() {
 }
 
 function setExtractionStatus(type: 'extracting' | 'error', message: string) {
-  const statusIndicator = document.getElementById('statusIndicator')
-  const statusText = document.getElementById('statusText')
-  const extractButton = document.getElementById('extractImages') as HTMLButtonElement
+  const statusIndicator = getElement('statusIndicator')
+  const statusText = getElement('statusText')
+  const extractButton = getElement<HTMLButtonElement>('extractImages')
 
   if (statusIndicator) {
     statusIndicator.className = `status-indicator ${type}`
@@ -142,8 +134,8 @@ function setExtractionStatus(type: 'extracting' | 'error', message: string) {
 }
 
 function clearExtractionStatus() {
-  const statusIndicator = document.getElementById('statusIndicator')
-  const extractButton = document.getElementById('extractImages') as HTMLButtonElement
+  const statusIndicator = getElement('statusIndicator')
+  const extractButton = getElement<HTMLButtonElement>('extractImages')
 
   if (statusIndicator) {
     statusIndicator.className = 'status-indicator'

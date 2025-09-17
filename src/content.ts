@@ -1,5 +1,5 @@
 import { DEFAULT_EXTRACTION_SETTINGS, MessageAction, type ExtractedImage, type ExtractionSettings, type ImageSourceType } from './types.js'
-import { logger, TIMEOUTS } from './utils.js'
+import { logger, querySelectorAll, TIMEOUTS } from './utils.js'
 
 logger.info('content script loaded')
 
@@ -67,7 +67,7 @@ async function extractAllImages(settings: ExtractionSettings): Promise<Extracted
 async function performExtraction(settings: ExtractionSettings): Promise<ExtractedImage[]> {
   const images: ExtractedImage[] = []
   // Scan all elements in the DOM
-  const allElements = document.querySelectorAll('*')
+  const allElements = querySelectorAll<Element>('*')
   logger.info(`Scanning ${allElements.length} elements`)
   // Helper to add image if valid and not already seen
   const addImageIfValid = async (url: string | null | undefined, element: Element, source: ImageSourceType = 'img') => {

@@ -1,5 +1,5 @@
 import { type DisplaySettings, type ExtractedImage, type GetSessionDataResponse, type ImageDisplayData, type PageInfo, DEFAULT_DISPLAY_SETTINGS, MessageAction } from './types.js'
-import { generateId, logger, TIMEOUTS, truncate } from './utils.js'
+import { addEvent, generateId, getElement, getRequiredElement, logger, querySelector, querySelectorAll, TIMEOUTS, truncate } from './utils.js'
 
 let allImages: ImageDisplayData[] = []
 let filteredImages: ImageDisplayData[] = []
@@ -87,7 +87,7 @@ async function initializePage() {
   restoreGridSize()
 
   // Hide loading
-  const loading = document.getElementById('loading')
+  const loading = getElement('loading')
   if (loading) loading.style.display = 'none'
 }
 
@@ -107,9 +107,9 @@ function convertToDisplayData(image: ExtractedImage): ImageDisplayData {
 function updatePageInfo() {
   if (!currentPageInfo) return
 
-  const titleElement = document.getElementById('pageTitle')
-  const countElement = document.getElementById('imageCount')
-  const urlElement = document.getElementById('pageUrl')
+  const titleElement = getElement('pageTitle')
+  const countElement = getElement('imageCount')
+  const urlElement = getElement('pageUrl')
 
   if (titleElement) {
     const fullTitle = `Images from ${currentPageInfo.title}`
@@ -130,27 +130,21 @@ function updatePageInfo() {
 
 function setupEventListeners() {
   // Filter controls
-  const formatFilter = document.getElementById('formatFilter') as HTMLSelectElement
-  const sizeFilter = document.getElementById('sizeFilter') as HTMLSelectElement
-  const sourceFilter = document.getElementById('sourceFilter') as HTMLSelectElement
-  const visibilityFilter = document.getElementById('visibilityFilter') as HTMLSelectElement
-  const textSearch = document.getElementById('textSearch') as HTMLInputElement
-
-  formatFilter?.addEventListener('change', applyFilters)
-  sizeFilter?.addEventListener('change', applyFilters)
-  sourceFilter?.addEventListener('change', applyFilters)
-  visibilityFilter?.addEventListener('change', applyFilters)
-  textSearch?.addEventListener('input', applyFilters)
+  addEvent('formatFilter', 'change', applyFilters)
+  addEvent('sizeFilter', 'change', applyFilters)
+  addEvent('sourceFilter', 'change', applyFilters)
+  addEvent('visibilityFilter', 'change', applyFilters)
+  addEvent('textSearch', 'input', applyFilters)
 
   // Show text search if any image has alt text
   const hasAltText = allImages.some(img => img.a)
-  const textSearchGroup = document.getElementById('textSearchGroup')
+  const textSearchGroup = getElement('textSearchGroup')
   if (textSearchGroup) {
     textSearchGroup.style.display = hasAltText ? 'block' : 'none'
   }
 
   // View controls
-  document.querySelectorAll('.view-btn').forEach(btn => {
+  querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const target = e.target as HTMLElement
       const size = target.dataset.size as 'small' | 'medium' | 'large'
@@ -159,9 +153,9 @@ function setupEventListeners() {
   })
 
   // Bulk actions
-  document.getElementById('selectAll')?.addEventListener('click', selectAllImages)
-  document.getElementById('selectNone')?.addEventListener('click', clearSelection)
-  document.getElementById('downloadSelected')?.addEventListener('click', downloadSelectedImages)
+  addEvent('selectAll', 'click', selectAllImages)
+  addEvent('selectNone', 'click', clearSelection)
+  addEvent('downloadSelected', 'click', downloadSelectedImages)
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -216,16 +210,16 @@ function setupEventListeners() {
   })
 
   // Lightbox
-  document.getElementById('lightbox')?.addEventListener('click', (e) => {
+  addEvent('lightbox', 'click', (e) => {
     const target = e.target as HTMLElement
     // Close lightbox unless clicking on the image itself
     if (target.tagName !== 'IMG') {
       closeLightbox()
     }
   })
-  document.getElementById('lightboxClose')?.addEventListener('click', closeLightbox)
-  document.getElementById('downloadCurrent')?.addEventListener('click', downloadCurrentImage)
-  document.getElementById('copyUrl')?.addEventListener('click', copyCurrentImageUrl)
+  addEvent('lightboxClose', 'click', closeLightbox)
+  addEvent('downloadCurrent', 'click', downloadCurrentImage)
+  addEvent('copyUrl', 'click', copyCurrentImageUrl)
 
   // Populate all filter options with counts
   populateAllFilters()
@@ -239,7 +233,7 @@ function populateAllFilters() {
 }
 
 function populateFormatFilter() {
-  const formatFilter = document.getElementById('formatFilter') as HTMLSelectElement
+  const formatFilter = getElement<HTMLSelectElement>('formatFilter')
   if (!formatFilter) return
 
   // Count images by format
@@ -262,7 +256,7 @@ function populateFormatFilter() {
 }
 
 function populateSizeFilter() {
-  const sizeFilter = document.getElementById('sizeFilter') as HTMLSelectElement
+  const sizeFilter = getElement<HTMLSelectElement>('sizeFilter')
   if (!sizeFilter) return
 
   // Count images by size category
@@ -296,7 +290,7 @@ function populateSizeFilter() {
 }
 
 function populateSourceFilter() {
-  const sourceFilter = document.getElementById('sourceFilter') as HTMLSelectElement
+  const sourceFilter = getElement<HTMLSelectElement>('sourceFilter')
   if (!sourceFilter) return
 
   // Count images by source type
@@ -327,7 +321,7 @@ function populateSourceFilter() {
 }
 
 function populateVisibilityFilter() {
-  const visibilityFilter = document.getElementById('visibilityFilter') as HTMLSelectElement
+  const visibilityFilter = getElement<HTMLSelectElement>('visibilityFilter')
   if (!visibilityFilter) return
 
   // Count images by visibility
@@ -355,11 +349,11 @@ function populateVisibilityFilter() {
 }
 
 function applyFilters() {
-  const formatFilter = document.getElementById('formatFilter') as HTMLSelectElement
-  const sizeFilter = document.getElementById('sizeFilter') as HTMLSelectElement
-  const sourceFilter = document.getElementById('sourceFilter') as HTMLSelectElement
-  const visibilityFilter = document.getElementById('visibilityFilter') as HTMLSelectElement
-  const textSearch = document.getElementById('textSearch') as HTMLInputElement
+  const formatFilter = getRequiredElement<HTMLSelectElement>('formatFilter')
+  const sizeFilter = getRequiredElement<HTMLSelectElement>('sizeFilter')
+  const sourceFilter = getRequiredElement<HTMLSelectElement>('sourceFilter')
+  const visibilityFilter = getRequiredElement<HTMLSelectElement>('visibilityFilter')
+  const textSearch = getRequiredElement<HTMLInputElement>('textSearch')
 
   filteredImages = allImages.filter(image => {
     // Format filter
@@ -419,7 +413,7 @@ function applyFilters() {
 }
 
 function updateImageCount() {
-  const countElement = document.getElementById('imageCount')
+  const countElement = getElement('imageCount')
   if (countElement) {
     const total = allImages.length
     const filtered = filteredImages.length
@@ -430,8 +424,8 @@ function updateImageCount() {
 }
 
 function renderImages() {
-  const grid = document.getElementById('imageGrid')
-  const noImages = document.getElementById('noImages')
+  const grid = getElement('imageGrid')
+  const noImages = getElement('noImages')
 
   if (!grid || !noImages) return
 
@@ -563,10 +557,10 @@ function handleImageSelection(imageId: string, currentIndex: number, isShiftClic
 // Update only selection count and bulk actions (no checkbox changes)
 function updateSelectionCount() {
   const selectedCount = selectedImages.size
-  const shortcutsContent = document.getElementById('shortcutsContent')
-  const bulkActionsContent = document.getElementById('bulkActionsContent')
-  const selectedCountElement = document.getElementById('selectedCount')
-  const downloadButton = document.getElementById('downloadSelected') as HTMLButtonElement
+  const shortcutsContent = getElement('shortcutsContent')
+  const bulkActionsContent = getElement('bulkActionsContent')
+  const selectedCountElement = getElement('selectedCount')
+  const downloadButton = getElement<HTMLButtonElement>('downloadSelected')
 
   const hasSelection = selectedCount > 0
 
@@ -590,7 +584,7 @@ function updateSelectionUI() {
   updateSelectionCount()
 
   // Update visual selection state for ALL items
-  document.querySelectorAll('.image-item').forEach(item => {
+  querySelectorAll('.image-item').forEach(item => {
     const imageId = item.getAttribute('data-image-id')
     const checkbox = item.querySelector('.image-checkbox') as HTMLInputElement
     if (imageId) {
@@ -618,11 +612,11 @@ function clearSelection() {
 }
 
 function setGridSize(size: 'small' | 'medium' | 'large') {
-  const grid = document.getElementById('imageGrid')
+  const grid = getElement('imageGrid')
   if (!grid) return
 
   // Update button states
-  document.querySelectorAll('.view-btn').forEach(btn => {
+  querySelectorAll('.view-btn').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-size') === size)
   })
 
@@ -635,9 +629,9 @@ function setGridSize(size: 'small' | 'medium' | 'large') {
 }
 
 function openLightbox(image: ImageDisplayData) {
-  const lightbox = document.getElementById('lightbox')
-  const lightboxImage = document.getElementById('lightboxImage') as HTMLImageElement
-  const metadata = document.getElementById('lightboxMetadata')
+  const lightbox = getElement('lightbox')
+  const lightboxImage = getElement<HTMLImageElement>('lightboxImage')
+  const metadata = getElement('lightboxMetadata')
 
   if (!lightbox || !lightboxImage || !metadata) return
 
@@ -659,7 +653,7 @@ function openLightbox(image: ImageDisplayData) {
 }
 
 function closeLightbox() {
-  const lightbox = document.getElementById('lightbox')
+  const lightbox = getElement('lightbox')
   if (lightbox) {
     lightbox.classList.remove('active')
   }
@@ -716,7 +710,7 @@ async function downloadSelectedImages() {
 }
 
 async function downloadCurrentImage() {
-  const lightbox = document.getElementById('lightbox')
+  const lightbox = getElement('lightbox')
   const imageData = lightbox?.getAttribute('data-current-image')
 
   if (imageData) {
@@ -771,7 +765,7 @@ function generateFilename(image: ImageDisplayData): string {
 }
 
 async function copyCurrentImageUrl() {
-  const lightbox = document.getElementById('lightbox')
+  const lightbox = getElement('lightbox')
   const imageData = lightbox?.getAttribute('data-current-image')
 
   if (imageData) {
@@ -779,7 +773,7 @@ async function copyCurrentImageUrl() {
     try {
       await navigator.clipboard.writeText(image.u)
       // Show brief feedback
-      const button = document.getElementById('copyUrl')
+      const button = getElement('copyUrl')
       if (button) {
         const originalText = button.textContent
         button.textContent = 'Copied!'
@@ -845,7 +839,7 @@ function navigateVertically(direction: 1 | -1) {
 }
 
 function calculateGridColumns(): number {
-  const grid = document.getElementById('imageGrid')
+  const grid = getElement('imageGrid')
   if (!grid) return 1
 
   // Get the first two image items to calculate column width
@@ -911,14 +905,14 @@ function toggleImageSelection(image: ImageDisplayData, currentIndex: number) {
 
 function updateImageFocus() {
   // Remove focus class from all items
-  document.querySelectorAll('.image-item').forEach(item => {
+  querySelectorAll('.image-item').forEach(item => {
     item.classList.remove('focused')
   })
 
   // Add focus class to current item
   if (filteredImages[currentImageIndex]) {
     const currentImageId = filteredImages[currentImageIndex].id
-    const currentElement = document.querySelector(`[data-image-id="${currentImageId}"]`)
+    const currentElement = querySelector(`[data-image-id="${currentImageId}"]`)
     if (currentElement) {
       currentElement.classList.add('focused')
     }
@@ -927,7 +921,7 @@ function updateImageFocus() {
 
 function updateDownloadedUI() {
   // Update all image items to show downloaded state and deselect them
-  document.querySelectorAll('.image-item').forEach(item => {
+  querySelectorAll('.image-item').forEach(item => {
     const imageId = item.getAttribute('data-image-id')
     if (imageId) {
       const image = filteredImages.find(img => img.id === imageId)
@@ -964,7 +958,7 @@ async function incrementDownloadCount() {
 }
 
 function updateDownloadCounter() {
-  const counterElement = document.getElementById('totalDownloads')
+  const counterElement = getElement('totalDownloads')
   if (counterElement) {
     counterElement.textContent = totalDownloadCount.toString()
   }
@@ -973,7 +967,7 @@ function updateDownloadCounter() {
 function scrollCurrentImageIntoView() {
   if (filteredImages[currentImageIndex]) {
     const currentImageId = filteredImages[currentImageIndex].id
-    const currentElement = document.querySelector(`[data-image-id="${currentImageId}"]`)
+    const currentElement = querySelector(`[data-image-id="${currentImageId}"]`)
     if (currentElement) {
       currentElement.scrollIntoView({
         behavior: 'smooth',
@@ -1012,7 +1006,7 @@ function downloadSingleImage(image: ImageDisplayData) {
 }
 
 function showError(message: string) {
-  const loading = document.getElementById('loading')
+  const loading = getElement('loading')
   if (loading) {
     loading.innerHTML = `
       <div style="color: #ef4444;">

@@ -30,18 +30,31 @@ export const logger = {
   },
 } as const
 
+// These HTML helpers make the code a bit shorter but a LOT shorter when minified
 export function getElement<T extends HTMLElement>(id: string): T | null {
   return document.getElementById(id) as T | null
-}
-
-export function addEvent(id: string, event: string, callback: (event: Event) => void) {
-  return getElement<HTMLElement>(id)?.addEventListener(event, callback)
 }
 
 export function getRequiredElement<T extends HTMLElement>(id: string): T {
   const element = getElement<T>(id)
   if (!element) throw new Error(`Required element not found: ${id}`)
   return element
+}
+
+export function addEvent<T extends HTMLElement>(id: string, event: string, callback: (event: Event) => void): T | null {
+  const elem = getElement<T>(id)
+  if (elem) {
+    elem.addEventListener(event, callback)
+  }
+  return elem
+}
+
+export function querySelector<T extends Element>(selector: string) {
+  return document.querySelector<T>(selector)
+}
+
+export function querySelectorAll<T extends Element>(selector: string) {
+  return document.querySelectorAll<T>(selector)
 }
 
 export function truncate(text: string, maxLength: number = 30, suffix: string = '...'): string {
