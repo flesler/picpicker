@@ -10,6 +10,7 @@ let rangeStartIndex = -1 // For shift-click range start tracking
 let currentImageIndex = 0 // For keyboard navigation focus
 let currentPageInfo: PageInfo | null = null
 let displaySettings: DisplaySettings = DEFAULT_DISPLAY_SETTINGS
+let totalDownloadCount = 0 // Historical count of all downloads ever
 
 logger.info('results page loaded')
 
@@ -60,15 +61,21 @@ async function initializePage() {
     throw new Error('No session ID provided')
   }
 
-  // Load display settings
+  // Load display settings and download count
   try {
-    const result = await browser.storage.sync.get(['displaySettings'])
+    const result = await browser.storage.sync.get(['displaySettings', 'totalDownloadCount'])
     if (result.displaySettings) {
       displaySettings = { ...DEFAULT_DISPLAY_SETTINGS, ...result.displaySettings }
     }
+    if (typeof result.totalDownloadCount === 'number') {
+      totalDownloadCount = result.totalDownloadCount
+    }
   } catch (error) {
-    logger.warn('Failed to load display settings', error)
+    logger.warn('Failed to load settings', error)
   }
+
+  // Update download counter display
+  updateDownloadCounter()
 
   // Update page info
   updatePageInfo()
@@ -694,6 +701,9 @@ async function downloadSelectedImages() {
       })
       downloadedImages.add(image.u) // Track as downloaded
       results.success++
+
+      // Increment total download count for each successful download
+      await incrementDownloadCount()
     } catch (error) {
       logger.warn('Failed to download image:', image.u, error)
       results.failed++
@@ -726,6 +736,9 @@ async function downloadImage(image: ImageDisplayData) {
     })
     downloadedImages.add(image.u) // Track as downloaded
     logger.info('Image downloaded', { url: image.u })
+
+    // Increment total download count
+    await incrementDownloadCount()
 
     // Update UI to show downloaded state
     updateDownloadedUI()
@@ -937,6 +950,25 @@ function updateDownloadedUI() {
 
   // Update selection count after removing downloaded images
   updateSelectionCount()
+}
+
+async function incrementDownloadCount() {
+  totalDownloadCount++
+
+  // Save to storage
+  try {
+    await browser.storage.sync.set({ totalDownloadCount })
+    updateDownloadCounter()
+  } catch (error) {
+    logger.error('Failed to save download count', error)
+  }
+}
+
+function updateDownloadCounter() {
+  const counterElement = document.getElementById('totalDownloads')
+  if (counterElement) {
+    counterElement.textContent = totalDownloadCount.toString()
+  }
 }
 
 function scrollCurrentImageIntoView() {

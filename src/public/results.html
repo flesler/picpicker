@@ -39,8 +39,27 @@
       margin-bottom: 1rem;
       display: flex;
       align-items: baseline;
+      justify-content: space-between;
       gap: 1rem;
       flex-wrap: wrap;
+    }
+
+    .page-info-left {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .download-counter {
+      font-size: 0.875rem;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-shrink: 0;
+      font-weight: 500;
     }
 
     .page-info h1 {
@@ -64,6 +83,12 @@
 
     @media (max-width: 768px) {
       .page-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+      
+      .page-info-left {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
@@ -461,10 +486,17 @@
   <header class="header">
     <div class="header-content">
       <div class="page-info">
-        <h1 id="pageTitle">Images from webpage</h1>
-        <div class="meta">
-          <span id="imageCount">0 images found</span> • 
-          <span id="pageUrl">Loading...</span>
+        <div class="page-info-left">
+          <h1 id="pageTitle">Images from webpage</h1>
+          <div class="meta">
+            <span id="imageCount">0 images found</span> •
+            <span id="pageUrl">Loading...</span>
+          </div>
+          </div>
+          <div class="download-counter">
+            <span>🏆</span>
+            <span id="totalDownloads">0</span>
+            <span>downloaded</span>
         </div>
       </div>
 
