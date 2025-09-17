@@ -221,20 +221,130 @@ function setupEventListeners() {
   document.getElementById('downloadCurrent')?.addEventListener('click', downloadCurrentImage)
   document.getElementById('copyUrl')?.addEventListener('click', copyCurrentImageUrl)
 
-  // Populate format filter options
+  // Populate all filter options with counts
+  populateAllFilters()
+}
+
+function populateAllFilters() {
   populateFormatFilter()
+  populateSizeFilter()
+  populateSourceFilter()
+  populateVisibilityFilter()
 }
 
 function populateFormatFilter() {
   const formatFilter = document.getElementById('formatFilter') as HTMLSelectElement
   if (!formatFilter) return
 
-  const formats = new Set(allImages.map(img => img.f).filter(Boolean))
-  formats.forEach(format => {
-    const option = document.createElement('option')
-    option.value = format!
-    option.textContent = format!.toUpperCase()
-    formatFilter.appendChild(option)
+  // Count images by format
+  const formatCounts = new Map<string, number>()
+  allImages.forEach(img => {
+    if (img.f) {
+      formatCounts.set(img.f, (formatCounts.get(img.f) || 0) + 1)
+    }
+  })
+
+  // Add options with counts
+  Array.from(formatCounts.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .forEach(([format, count]) => {
+      const option = document.createElement('option')
+      option.value = format
+      option.textContent = `${format.toUpperCase()} (${count})`
+      formatFilter.appendChild(option)
+    })
+}
+
+function populateSizeFilter() {
+  const sizeFilter = document.getElementById('sizeFilter') as HTMLSelectElement
+  if (!sizeFilter) return
+
+  // Count images by size category
+  let smallCount = 0
+  let mediumCount = 0
+  let largeCount = 0
+
+  allImages.forEach(img => {
+    const maxDimension = Math.max(img.w || 0, img.h || 0)
+    if (maxDimension < 100) {
+      smallCount++
+    } else if (maxDimension <= 500) {
+      mediumCount++
+    } else {
+      largeCount++
+    }
+  })
+
+  // Update existing options with counts
+  const options = sizeFilter.querySelectorAll('option')
+  options.forEach(option => {
+    const value = option.value
+    if (value === 'small') {
+      option.textContent = `Small (<100px) (${smallCount})`
+    } else if (value === 'medium') {
+      option.textContent = `Medium (100-500px) (${mediumCount})`
+    } else if (value === 'large') {
+      option.textContent = `Large (>500px) (${largeCount})`
+    }
+  })
+}
+
+function populateSourceFilter() {
+  const sourceFilter = document.getElementById('sourceFilter') as HTMLSelectElement
+  if (!sourceFilter) return
+
+  // Count images by source type
+  const sourceCounts = new Map<string, number>()
+  allImages.forEach(img => {
+    if (img.s) {
+      sourceCounts.set(img.s, (sourceCounts.get(img.s) || 0) + 1)
+    }
+  })
+
+  // Update existing options with counts (always show count, even if 0)
+  const options = sourceFilter.querySelectorAll('option')
+  options.forEach(option => {
+    const value = option.value
+    if (value) {
+      const count = sourceCounts.get(value) || 0
+      const labels = {
+        'img': 'IMG tags',
+        'bg': 'Backgrounds',
+        'svg': 'SVG',
+        'video': 'Video',
+        'canvas': 'Canvas',
+      }
+      const label = labels[value as keyof typeof labels] || value
+      option.textContent = `${label} (${count})`
+    }
+  })
+}
+
+function populateVisibilityFilter() {
+  const visibilityFilter = document.getElementById('visibilityFilter') as HTMLSelectElement
+  if (!visibilityFilter) return
+
+  // Count images by visibility
+  let visibleCount = 0
+  let hiddenCount = 0
+
+  allImages.forEach(img => {
+    if (img.v) {
+      visibleCount++
+    } else {
+      hiddenCount++
+    }
+  })
+
+  // Update existing options with counts
+  const options = visibilityFilter.querySelectorAll('option')
+  options.forEach(option => {
+    const value = option.value
+    if (value === 'visible') {
+      option.textContent = `Visible in viewport (${visibleCount})`
+    } else if (value === 'hidden') {
+      option.textContent = `Not visible (${hiddenCount})`
+    }
   })
 }
 
