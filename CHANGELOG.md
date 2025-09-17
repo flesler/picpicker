@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.2.2](https://github.com/flesler/picpicker/compare/v1.2.1...v1.2.2)
+
+- Use some DOM method wrappers, reduce .js size in almost 10% [`54da355`](https://github.com/flesler/picpicker/commit/54da355f0c29ce939ad6b286b5eb116ab1eab92d)
+- Setup Mozilla's addon-linter [`55cd612`](https://github.com/flesler/picpicker/commit/55cd612a546a97775a0d36ae8d3a4182884051e6)
+- Replace all usage of innerHTML for DOM manipulation for safer code [`90c77f9`](https://github.com/flesler/picpicker/commit/90c77f9f20de4d4bad47a0e096a8e3103128b9e5)
+
 #### [v1.2.1](https://github.com/flesler/picpicker/compare/v1.2.0...v1.2.1)
 
 - Various improvements related to the build process [`d6fda83`](https://github.com/flesler/picpicker/commit/d6fda83b8e79674a63343153a3baf502bb92450e)
