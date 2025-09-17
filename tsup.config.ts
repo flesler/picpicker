@@ -17,13 +17,16 @@ export default defineConfig(() => {
     format: ['iife'],
     globalName: 'Extension',
     platform: 'browser',
+    banner: {
+      js: 'importScripts(\'browser-polyfill.js\');',
+    },
     target: isFirefox ? 'firefox109' : 'chrome91',
     outDir: 'dist',
     dts: false,
     clean: prod,
     minify: prod,
     treeshake: prod,
-    silent: !prod,
+    silent: false, // !prod,
     define: {
       NAME: JSON.stringify(manifest.name),
       VERSION: JSON.stringify(manifest.version),
@@ -31,13 +34,15 @@ export default defineConfig(() => {
     },
     esbuildPlugins: [
       copy({
-        assets: [{ from: ['src/public/**'], to: ['./'] }],
+        assets: [
+          { from: ['src/public/**'], to: ['./'] },
+          { from: ['node_modules/webextension-polyfill/dist/browser-polyfill.min.js'], to: ['browser-polyfill.js'] },
+        ],
       }),
     ],
     esbuildOptions(options) {
       options.legalComments = 'none'
       options.drop = ['debugger']
-      options.entryNames = '[name]'
     },
     outExtension() {
       return { js: '.js' }

@@ -1,5 +1,4 @@
-import type Browser from 'webextension-polyfill'
-import browser from 'webextension-polyfill'
+import browser from './browser.js'
 import { DEFAULT_EXTRACTION_SETTINGS, MessageAction, type ExtractedImage, type ExtractionSettings, type ImageSourceType } from './types.js'
 import { logger, TIMEOUTS } from './utils.js'
 
@@ -23,7 +22,7 @@ function init() {
 
   try {
     // Set up message listener for image extraction
-    browser.runtime.onMessage.addListener((request: any, sender: Browser.Runtime.MessageSender, sendResponse: (response?: any) => void): true => {
+    browser.runtime.onMessage.addListener((request: any, sender: unknown, sendResponse: (response?: any) => void): true => {
       if (request.action === MessageAction.EXTRACT_IMAGES) {
         logger.info('Image extraction triggered')
         const settings = { ...DEFAULT_EXTRACTION_SETTINGS, ...request.settings } as ExtractionSettings

@@ -1,6 +1,4 @@
-// Import webextension-polyfill for consistent promise-based APIs
-import type Browser from 'webextension-polyfill'
-import browser from 'webextension-polyfill'
+import browser from './browser.js'
 import type { CreateResultsTabRequest, ExtractImagesRequest, GetSessionDataRequest } from './types.js'
 import { DEFAULT_USER_SETTINGS, MessageAction } from './types.js'
 import { execute, getStorage, logger, setStorage } from './utils.js'
@@ -119,7 +117,7 @@ async function createResultsTab(images: any[], pageInfo: any) {
   }
 }
 
-browser.runtime.onMessage.addListener((request: any, sender: Browser.Runtime.MessageSender, sendResponse: (response?: any) => void): true => {
+browser.runtime.onMessage.addListener((request: any, sender: unknown, sendResponse: (response?: any) => void): true => {
   if (request.action === MessageAction.CREATE_RESULTS_TAB) {
     execute(async () => {
       const createRequest = request as CreateResultsTabRequest

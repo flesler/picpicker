@@ -1,4 +1,4 @@
-import browser from 'webextension-polyfill'
+import browser from './browser.js'
 import env from './env.js'
 import type { MessageAction, Storage, StorageGet, StorageKeys } from './types.js'
 import { DEFAULT_USER_SETTINGS } from './types.js'

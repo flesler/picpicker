@@ -26,6 +26,10 @@
   "background": {
     "service_worker": "background.js"
   },
+  "web_accessible_resources": [{
+    "resources": ["browser-polyfill.js"],
+    "matches": ["<all_urls>"]
+  }],
   "commands": {
     "extract-images": {
       "suggested_key": {

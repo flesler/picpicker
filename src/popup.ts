@@ -1,5 +1,4 @@
-// Import webextension-polyfill for consistent promise-based APIs
-import browser from 'webextension-polyfill'
+import browser from './browser.js'
 import env from './env.js'
 import type { UserSettings } from './types.js'
 import { DEFAULT_USER_SETTINGS, MessageAction } from './types.js'
