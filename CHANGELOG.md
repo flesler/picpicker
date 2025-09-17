@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.2.0](https://github.com/flesler/picpicker/compare/v1.1.0...v1.2.0)
+
+- Update the md files after dropping the ZIP download aspect [`58b7608`](https://github.com/flesler/picpicker/commit/58b76089b66f8b77b81293f425ff7c8ca5cf4c78)
+- Add esbuild-plugin-copy for asset management in build process [`de4ebbf`](https://github.com/flesler/picpicker/commit/de4ebbfda273da4e77a8a69ec7cbdc906dae3d66)
+- Greatly improve and optimize the npm scripts and tsup config [`daa30d5`](https://github.com/flesler/picpicker/commit/daa30d5e84b57eff5e303c7b4a0a36fbd48d3af5)
+- Implement arrow keys navigation and selection [`0572fe6`](https://github.com/flesler/picpicker/commit/0572fe6e43a5d2cc08526f8b66e55010104c925d)
+- Add informational sign explaining the keyboard and mouse shortcuts available [`4515ca0`](https://github.com/flesler/picpicker/commit/4515ca056a3689b72d7c4ef76f8bfd9f71f3edc6)
+- Add support for pressing Enter to download the current image [`0343880`](https://github.com/flesler/picpicker/commit/0343880bbd1fda2d825b30805296aa8d67329755)
+- Add support for Home/End keys and unify mouse and keyboard selection index [`347f9a0`](https://github.com/flesler/picpicker/commit/347f9a0e14f39af1b26d34da75cc16816661bf0c)
+- Downloaded images are marked with a green checkbox, cannot be double-downloaded [`20db879`](https://github.com/flesler/picpicker/commit/20db879cc8a6abb9ff349caf85481aacec02fde5)
+- Pressing Enter on a selected image downloads all the selected ones [`9dea87d`](https://github.com/flesler/picpicker/commit/9dea87d822ecb299c1008751193006407e889826)
+- The addon remembers the last selected grid size and restores (Small/Medium/Large) [`ca72c48`](https://github.com/flesler/picpicker/commit/ca72c48c5be6b935be3b686ef1cfb618f2907ea2)
+- Show counts on every filter dropdown option, on how many images match that filter [`fe6d58d`](https://github.com/flesler/picpicker/commit/fe6d58d0cf01e8367f40f147b8e652e963d718a8)
+- Add an all-time downloads counter to the top right [`3b18685`](https://github.com/flesler/picpicker/commit/3b18685d04d2c3ce4444f08f0beab8eb14e5464e)
+
 #### [v1.1.0](https://github.com/flesler/picpicker/compare/v1.0.1...v1.1.0)
 
 - Add max-width to results text for better layout [`db7da7b`](https://github.com/flesler/picpicker/commit/db7da7bdbd81b4e79493d8f4d2863d455cc7d55d)

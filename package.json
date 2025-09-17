@@ -1,6 +1,6 @@
 {
   "name": "picpicker",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "Ariel Flesler <aflesler@gmail.com>",
   "gecko_id": "picpicker@flesler.com",
   "type": "module",
