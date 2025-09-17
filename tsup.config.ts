@@ -31,7 +31,10 @@ export default defineConfig(() => {
     },
     esbuildPlugins: [
       copy({
-        assets: [{ from: ['src/public/**'], to: ['./'] }],
+        assets: [
+          { from: ['src/public/**'], to: ['./'] },
+          { from: ['node_modules/webextension-polyfill/dist/browser-polyfill.min.js'], to: ['browser-polyfill.js'] },
+        ],
       }),
     ],
     esbuildOptions(options) {
@@ -78,7 +81,5 @@ function generateManifest(isFirefox = false) {
     // Remove any Firefox-specific properties
     delete manifest.browser_specific_settings
   }
-
-  console.log(`Generated ${isFirefox ? 'Firefox' : 'Chrome'} manifest with activeTab permissions`)
   return manifest
 }

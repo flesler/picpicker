@@ -1,6 +1,6 @@
-// Import webextension-polyfill for consistent promise-based APIs
-import type Browser from 'webextension-polyfill'
-import browser from 'webextension-polyfill'
+// Load polyfill in service worker context
+importScripts('browser-polyfill.js')
+
 import type { CreateResultsTabRequest, ExtractImagesRequest, GetSessionDataRequest } from './types.js'
 import { DEFAULT_USER_SETTINGS, MessageAction } from './types.js'
 import { execute, getStorage, logger, setStorage } from './utils.js'
@@ -47,11 +47,11 @@ async function extractImagesFromTab(tabId: number) {
     const { userSettings } = await getStorage(['userSettings'])
     const settings = userSettings || DEFAULT_USER_SETTINGS
 
-    // Inject content script dynamically (only when needed)
+    // Inject polyfill first, then content script
     logger.info('Injecting content script into active tab')
     await browser.scripting.executeScript({
       target: { tabId },
-      files: ['content.js'],
+      files: ['browser-polyfill.js', 'content.js'],
     })
 
     // Wait a moment for content script to initialize
@@ -119,7 +119,7 @@ async function createResultsTab(images: any[], pageInfo: any) {
   }
 }
 
-browser.runtime.onMessage.addListener((request: any, sender: Browser.Runtime.MessageSender, sendResponse: (response?: any) => void): true => {
+browser.runtime.onMessage.addListener((request: any, sender: unknown, sendResponse: (response?: any) => void): true => {
   if (request.action === MessageAction.CREATE_RESULTS_TAB) {
     execute(async () => {
       const createRequest = request as CreateResultsTabRequest

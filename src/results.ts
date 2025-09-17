@@ -1,4 +1,3 @@
-import browser from 'webextension-polyfill'
 import { type DisplaySettings, type ExtractedImage, type GetSessionDataResponse, type ImageDisplayData, type PageInfo, DEFAULT_DISPLAY_SETTINGS, MessageAction } from './types.js'
 import { generateId, logger, TIMEOUTS, truncate } from './utils.js'
 
