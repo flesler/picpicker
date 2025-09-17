@@ -31,10 +31,6 @@
     .header-content {
       max-width: 1400px;
       margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 2rem;
     }
 
     .page-info h1 {
@@ -45,10 +41,13 @@
     }
 
     #pageTitle {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 50%;
+      word-wrap: break-word;
+    }
+
+    .page-info {
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 1rem;
     }
 
     .page-info .meta {
@@ -61,6 +60,7 @@
       align-items: center;
       gap: 1rem;
       flex-wrap: wrap;
+      justify-content: flex-start;
     }
 
     .control-group {
@@ -140,6 +140,29 @@
       padding: 2rem;
     }
 
+    .action-container {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      border: 1px solid #e2e8f0;
+      min-height: 4rem;
+      transition: all 0.3s ease;
+    }
+
+    .shortcuts-content {
+      font-size: 0.875rem;
+      color: #475569;
+    }
+
+    .shortcuts-content p {
+      margin: 0 0 0.5rem 0;
+    }
+
+    .shortcuts-content p:last-child {
+      margin-bottom: 0;
+    }
+
     .loading {
       text-align: center;
       padding: 3rem;
@@ -192,6 +215,16 @@
     .image-item.selected {
       ring: 2px solid #3b82f6;
       box-shadow: 0 0 0 2px #3b82f6;
+    }
+
+    .image-item.focused {
+      outline: 3px solid #f59e0b;
+      outline-offset: 2px;
+    }
+
+    .image-item.selected.focused {
+      box-shadow: 0 0 0 2px #3b82f6, 0 0 0 5px #f59e0b;
+      outline: none;
     }
 
     .image-container {
@@ -318,17 +351,8 @@
       padding: 0.5rem;
     }
 
-    .bulk-actions {
-      background: white;
-      border-radius: 0.5rem;
-      padding: 1rem;
-      margin-bottom: 2rem;
-      border: 1px solid #e2e8f0;
+    .bulk-actions-content {
       display: none;
-    }
-
-    .bulk-actions.active {
-      display: block;
     }
 
     .bulk-actions-content {
@@ -349,12 +373,6 @@
     }
 
     @media (max-width: 768px) {
-      .header-content {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
-      }
-
       .controls {
         justify-content: center;
       }
@@ -436,8 +454,13 @@
   </header>
 
   <main class="main-content">
-    <div class="bulk-actions" id="bulkActions">
-      <div class="bulk-actions-content">
+    <div class="action-container" id="actionContainer">
+      <div class="shortcuts-content" id="shortcutsContent">
+        <p><strong>Keyboard:</strong> Use the arrows to navigate (←→ for left/right, ↑↓ for up/down rows), spacebar to
+          toggle</p>
+        <p><strong>Mouse:</strong> Ctrl+Click to toggle selection, Shift+Click to select a range</p>
+      </div>
+      <div class="bulk-actions-content" id="bulkActionsContent" style="display: none;">
         <div class="selection-info">
           <span id="selectedCount">0</span> images selected
         </div>
