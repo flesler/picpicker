@@ -121,9 +121,7 @@ function updatePageInfo() {
   const urlElement = getElement<HTMLAnchorElement>('pageUrl')
 
   if (titleElement) {
-    const fullTitle = `Images from ${currentPageInfo.title}`
-    titleElement.textContent = fullTitle
-    titleElement.title = fullTitle
+    titleElement.textContent = titleElement.title = currentPageInfo.title
   }
 
   if (countElement) {

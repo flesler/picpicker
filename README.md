@@ -29,12 +29,12 @@ A powerful browser extension that extracts **all images** from any webpage with 
 
 ## 📸 Screenshots
 
-### Popup Settings
+### One-Click Extraction
 <p align="center">
-  <img src="images/screenshot1.png" alt="PicPicker Popup Settings" width="100%">
+  <img src="images/screenshot1.png" alt="PicPicker Direct Extraction" width="100%">
 </p>
 
-*Clean popup interface with extraction settings - minimum size, backgrounds, SVG, alt text options*
+*Single-click extraction with optimal default settings - no configuration needed*
 
 ### Image Grid Results
 <p align="center">
@@ -60,9 +60,8 @@ A powerful browser extension that extracts **all images** from any webpage with 
 ### Usage
 1. **Visit any website** with images (works everywhere!)
 2. **Click the extension icon** or use `Ctrl+Shift+I`
-3. **Choose extraction settings** - size filters, backgrounds, alt text
-4. **Click "Extract Images"** - opens new tab with all found images
-5. **Filter, select, and download** - use the powerful grid interface
+3. **Extraction starts immediately** - opens new tab with all found images
+4. **Filter, select, and download** - use the powerful grid interface
 
 ### Image Sources Supported
 - 🖼️ **IMG tags** - Standard `<img src="">` elements
@@ -98,13 +97,11 @@ npm run prepack
 src/
 ├── background.ts      # Service worker - tab management, session storage
 ├── content.ts         # DOM scanner - extracts images from any webpage
-├── popup.ts          # Settings interface - filters, extraction options
 ├── results.ts        # Results page - grid display, filtering, downloads
 ├── types.ts          # TypeScript interfaces for images and settings
-├── utils.ts          # Shared utilities - logging, storage, helpers
+├── utils.ts          # Shared utilities - logging, helpers
 └── public/
     ├── manifest.json  # Extension manifest (universal domain support)
-    ├── popup.html     # Settings popup UI
     ├── results.html   # Image grid results page
     └── icons/         # Extension icons (16px, 48px, 128px)
 ```
@@ -152,10 +149,10 @@ DOM Scanning → Session Storage → Grid Display
 ## ⚙️ Settings & Features
 
 ### Extraction Settings
-- **Size Filters** - Minimum width/height (50px, 100px, 200px)
+- **Optimal defaults** - 50px minimum, all source types enabled
 - **Source Types** - IMG tags, backgrounds, SVG, video posters
-- **Alt Text** - Optional extraction for search/tooltips (off by default)
-- **Performance** - Max images per page, extraction timeout
+- **Alt Text** - Enabled for search/tooltips
+- **Performance** - 1000 images max per page, 10s timeout
 
 ### Results Features
 - **Filtering** - Format, size, source type, viewport visibility

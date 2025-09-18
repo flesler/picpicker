@@ -88,8 +88,7 @@ const pendingSessions = new Map<string, { images: ExtractedImage[], pageInfo: Pa
 async function createResultsTab(images: ExtractedImage[], pageInfo: PageInfo) {
   try {
     // Generate unique session ID for this results tab
-    const sessionId = `picpicker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
+    const sessionId = Math.random().toString(36).slice(-5)
     // Store data in memory for this session
     pendingSessions.set(sessionId, { images, pageInfo })
 
