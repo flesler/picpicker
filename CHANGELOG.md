@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v2.0.0](https://github.com/flesler/picpicker/compare/v1.2.2...v2.0.0)
+
+- Include the data_collection_permissions in Mozilla's manifests [`c40c3d7`](https://github.com/flesler/picpicker/commit/c40c3d7f37dfa1146e66207bcd99b5b8efc307de)
+- Remove the popup, clicking the extension auto-opens the results [`b385dec`](https://github.com/flesler/picpicker/commit/b385decf2381a4738176b436be66f7fe4c26f5c8)
+- Update the logo to a new one [`7317814`](https://github.com/flesler/picpicker/commit/7317814f3f1120165dd526998fdad84b4df0ffb9)
+- Improve the results layout to take less space from the grid [`4981fb5`](https://github.com/flesler/picpicker/commit/4981fb566f20f52f40112010c12a0b80cf5a6b84)
+
 #### [v1.2.2](https://github.com/flesler/picpicker/compare/v1.2.1...v1.2.2)
 
 - Use some DOM method wrappers, reduce .js size in almost 10% [`54da355`](https://github.com/flesler/picpicker/commit/54da355f0c29ce939ad6b286b5eb116ab1eab92d)
