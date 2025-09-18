@@ -1,5 +1,14 @@
-import { type DisplaySettings, type ExtractedImage, type GetSessionDataResponse, type ImageDisplayData, type PageInfo, DEFAULT_DISPLAY_SETTINGS, MessageAction } from './types.js'
+import { type ExtractedImage, type GetSessionDataResponse, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
 import { addEvent, generateId, getElement, getRequiredElement, logger, querySelector, querySelectorAll, TIMEOUTS, truncate } from './utils.js'
+
+// Display settings constants - no longer customizable via UI
+const DISPLAY_SETTINGS = {
+  thumbnailSize: 'medium' as 'small' | 'medium' | 'large',
+  imagesPerRow: 0, // auto
+  sortBy: 'original' as 'original' | 'size' | 'format' | 'name',
+  showMetadata: true,
+  gridView: true,
+}
 
 let allImages: ImageDisplayData[] = []
 let filteredImages: ImageDisplayData[] = []
@@ -8,7 +17,7 @@ let downloadedImages = new Set<string>() // Track downloaded images to avoid dup
 let rangeStartIndex = -1 // For shift-click range start tracking
 let currentImageIndex = 0 // For keyboard navigation focus
 let currentPageInfo: PageInfo | null = null
-let displaySettings: DisplaySettings = DEFAULT_DISPLAY_SETTINGS
+let displaySettings = DISPLAY_SETTINGS
 let totalDownloadCount = 0 // Historical count of all downloads ever
 
 logger.info('results page loaded')
@@ -64,7 +73,7 @@ async function initializePage() {
   try {
     const result = await browser.storage.sync.get(['displaySettings', 'totalDownloadCount'])
     if (result.displaySettings) {
-      displaySettings = { ...DEFAULT_DISPLAY_SETTINGS, ...result.displaySettings }
+      displaySettings = { ...DISPLAY_SETTINGS, ...result.displaySettings }
     }
     if (typeof result.totalDownloadCount === 'number') {
       totalDownloadCount = result.totalDownloadCount

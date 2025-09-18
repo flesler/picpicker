@@ -11,7 +11,6 @@ export default defineConfig(() => {
     entry: {
       background: 'src/background.ts',
       content: 'src/content.ts',
-      popup: 'src/popup.ts',
       results: 'src/results.ts',
     },
     format: ['iife'],

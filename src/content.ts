@@ -1,5 +1,22 @@
-import { DEFAULT_EXTRACTION_SETTINGS, MessageAction, type ExtractedImage, type ExtractionSettings, type ImageSourceType } from './types.js'
+import { MessageAction, type ExtractedImage, type ExtractImagesRequest, type ImageSourceType } from './types.js'
 import { logger, querySelectorAll, TIMEOUTS } from './utils.js'
+
+// Extraction settings constants - no longer passed via messages
+const EXTRACTION_SETTINGS = {
+  minWidth: 50,
+  minHeight: 50,
+  maxFileSize: 50 * 1024 * 1024, // 50MB
+  includeImgTags: true,
+  includeBackgrounds: true,
+  includeSvg: true,
+  includeAltText: true,
+  includeVideoPoster: true,
+  includeCanvas: false,
+  allowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'apng', 'ico', 'bmp'],
+  skipDataUrls: true,
+  maxImagesPerPage: 1000,
+  extractionTimeout: 10000,
+} as const
 
 logger.info('content script loaded')
 
@@ -21,12 +38,11 @@ function init() {
 
   try {
     // Set up message listener for image extraction
-    browser.runtime.onMessage.addListener((request: any, sender: unknown, sendResponse: (response?: any) => void): true => {
-      if (request.action === MessageAction.EXTRACT_IMAGES) {
+    browser.runtime.onMessage.addListener((request: unknown, sender: unknown, sendResponse: (response?: { success: boolean; images?: ExtractedImage[]; error?: string }) => void): true => {
+      const typedRequest = request as ExtractImagesRequest
+      if (typedRequest.action === MessageAction.EXTRACT_IMAGES) {
         logger.info('Image extraction triggered')
-        const settings = { ...DEFAULT_EXTRACTION_SETTINGS, ...request.settings } as ExtractionSettings
-
-        extractAllImages(settings)
+        extractAllImages()
           .then(images => {
             logger.info(`Extracted ${images.length} images`)
             sendResponse({ success: true, images })
@@ -50,13 +66,13 @@ function init() {
 }
 
 // Main image extraction function - scans entire DOM for images
-async function extractAllImages(settings: ExtractionSettings): Promise<ExtractedImage[]> {
+async function extractAllImages(): Promise<ExtractedImage[]> {
   try {
     // Use timeout to prevent hanging on large pages
     const timeoutPromise = new Promise<ExtractedImage[]>((_, reject) => {
-      setTimeout(() => reject(new Error('Extraction timeout')), settings.extractionTimeout)
+      setTimeout(() => reject(new Error('Extraction timeout')), EXTRACTION_SETTINGS.extractionTimeout)
     })
-    const extractionPromise = performExtraction(settings)
+    const extractionPromise = performExtraction()
     return await Promise.race([extractionPromise, timeoutPromise])
   } catch (error) {
     logger.error('Extraction error', error)
@@ -64,7 +80,7 @@ async function extractAllImages(settings: ExtractionSettings): Promise<Extracted
   }
 }
 
-async function performExtraction(settings: ExtractionSettings): Promise<ExtractedImage[]> {
+async function performExtraction(): Promise<ExtractedImage[]> {
   const images: ExtractedImage[] = []
   // Scan all elements in the DOM
   const allElements = querySelectorAll<Element>('*')
@@ -72,7 +88,7 @@ async function performExtraction(settings: ExtractionSettings): Promise<Extracte
   // Helper to add image if valid and not already seen
   const addImageIfValid = async (url: string | null | undefined, element: Element, source: ImageSourceType = 'img') => {
     if (!url) return
-    const extracted = await createImageObject(url, element, source, settings)
+    const extracted = await createImageObject(url, element, source)
     if (extracted && !images.some(img => img.u === extracted.u)) {
       images.push(extracted)
     }
@@ -80,14 +96,14 @@ async function performExtraction(settings: ExtractionSettings): Promise<Extracte
 
   for (const element of allElements) {
     // Stop if we've hit the limit
-    if (images.length >= settings.maxImagesPerPage) {
-      logger.info(`Hit max images limit: ${settings.maxImagesPerPage}`)
+    if (images.length >= EXTRACTION_SETTINGS.maxImagesPerPage) {
+      logger.info(`Hit max images limit: ${EXTRACTION_SETTINGS.maxImagesPerPage}`)
       break
     }
 
     try {
       // Extract from IMG tags
-      if (settings.includeImgTags && element.tagName === 'IMG') {
+      if (EXTRACTION_SETTINGS.includeImgTags && element.tagName === 'IMG') {
         const img = element as HTMLImageElement
 
         // Extract from src attribute
@@ -107,7 +123,7 @@ async function performExtraction(settings: ExtractionSettings): Promise<Extracte
       }
 
       // Extract from SOURCE tags (picture elements)
-      if (settings.includeImgTags && element.tagName === 'SOURCE') {
+      if (EXTRACTION_SETTINGS.includeImgTags && element.tagName === 'SOURCE') {
         const source = element as HTMLSourceElement
         // Extract from srcset attribute in source tags
         const srcsetUrls = parseSrcset(source.srcset)
@@ -117,7 +133,7 @@ async function performExtraction(settings: ExtractionSettings): Promise<Extracte
       }
 
       // Extract from background images
-      if (settings.includeBackgrounds) {
+      if (EXTRACTION_SETTINGS.includeBackgrounds) {
         const computed = window.getComputedStyle(element)
         const bgImage = computed.backgroundImage
         if (bgImage?.includes('url(')) {
@@ -133,13 +149,13 @@ async function performExtraction(settings: ExtractionSettings): Promise<Extracte
       }
 
       // Extract from VIDEO poster
-      if (settings.includeVideoPoster && element.tagName === 'VIDEO') {
+      if (EXTRACTION_SETTINGS.includeVideoPoster && element.tagName === 'VIDEO') {
         const video = element as HTMLVideoElement
         await addImageIfValid(video.poster, video, 'video')
       }
 
       // Extract from SVG
-      if (settings.includeSvg && element.tagName === 'SVG') {
+      if (EXTRACTION_SETTINGS.includeSvg && element.tagName === 'SVG') {
         // Convert SVG to data URL
         const svgData = new XMLSerializer().serializeToString(element)
         const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgData)
@@ -147,7 +163,7 @@ async function performExtraction(settings: ExtractionSettings): Promise<Extracte
       }
 
       // Extract from Canvas (expensive, disabled by default)
-      if (settings.includeCanvas && element.tagName === 'CANVAS') {
+      if (EXTRACTION_SETTINGS.includeCanvas && element.tagName === 'CANVAS') {
         try {
           const canvas = element as HTMLCanvasElement
           const dataUrl = canvas.toDataURL()
@@ -166,21 +182,21 @@ async function performExtraction(settings: ExtractionSettings): Promise<Extracte
   const visibleCount = images.filter(img => img.v).length
   logger.info(`Extraction complete: ${images.length} images from ${allElements.length} elements`)
   logger.info(`Visible in viewport: ${visibleCount}/${images.length} images`)
-  logger.info(`Extraction stopped because: ${images.length >= settings.maxImagesPerPage ? 'hit maxImagesPerPage limit' : 'finished scanning all elements'}`)
-  logger.info(`Settings: maxImagesPerPage=${settings.maxImagesPerPage}, timeout=${settings.extractionTimeout}ms`)
+  logger.info(`Extraction stopped because: ${images.length >= EXTRACTION_SETTINGS.maxImagesPerPage ? 'hit maxImagesPerPage limit' : 'finished scanning all elements'}`)
+  logger.info(`Settings: maxImagesPerPage=${EXTRACTION_SETTINGS.maxImagesPerPage}, timeout=${EXTRACTION_SETTINGS.extractionTimeout}ms`)
   return images
 }
 
-async function createImageObject(url: string, element: Element, source: ImageSourceType, settings: ExtractionSettings): Promise<ExtractedImage | null> {
+async function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): Promise<ExtractedImage | null> {
   try {
     // Skip data URLs if configured
-    if (settings.skipDataUrls && url.startsWith('data:')) {
+    if (EXTRACTION_SETTINGS.skipDataUrls && url.startsWith('data:')) {
       return null
     }
 
     // Get format from URL
     const format = getImageFormat(url)
-    if (!settings.allowedFormats.includes(format)) {
+    if (!(EXTRACTION_SETTINGS.allowedFormats as readonly string[]).includes(format)) {
       return null
     }
 
@@ -255,11 +271,11 @@ async function createImageObject(url: string, element: Element, source: ImageSou
     }
 
     // Check size filters
-    if (width && width < settings.minWidth) return null
-    if (height && height < settings.minHeight) return null
+    if (width && width < EXTRACTION_SETTINGS.minWidth) return null
+    if (height && height < EXTRACTION_SETTINGS.minHeight) return null
 
     // Get alt text only if enabled (reduces payload size)
-    const alt = settings.includeAltText
+    const alt = EXTRACTION_SETTINGS.includeAltText
       ? ((element as HTMLImageElement).alt || (element as HTMLElement).title || undefined)
       : undefined
 

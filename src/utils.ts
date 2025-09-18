@@ -1,13 +1,9 @@
 import env from './env.js'
-import type { MessageAction, Storage, StorageGet, StorageKeys } from './types.js'
-import { DEFAULT_USER_SETTINGS } from './types.js'
 
 // Constants for timeouts and limits
 export const TIMEOUTS = {
   CONTEXT_RETRY: 1000,
   INIT_RETRY: 2000,
-  STATUS_CLEAR_SHORT: 3000,
-  STATUS_CLEAR_LONG: 5000,
   COPY_FEEDBACK: 2000,
 } as const
 
@@ -59,48 +55,6 @@ export function querySelectorAll<T extends Element>(selector: string) {
 
 export function truncate(text: string, maxLength: number = 30, suffix: string = '...'): string {
   return text.length > maxLength ? text.substring(0, maxLength) + suffix : text
-}
-
-export function sendMessage<T = unknown>(
-  action: MessageAction,
-  data: Record<string, unknown> = {},
-): Promise<T> {
-  return browser.runtime.sendMessage({ action, ...data })
-}
-
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
-}
-
-export function setInputValue(id: string, value: string | number | boolean) {
-  const element = getElement<HTMLInputElement | HTMLSelectElement>(id)
-  if (!element) return
-
-  if (element.type === 'checkbox') {
-    (element as HTMLInputElement).checked = Boolean(value)
-  } else {
-    element.value = String(value)
-  }
-}
-
-export function getInputValue(id: string): string {
-  const element = getElement<HTMLInputElement | HTMLSelectElement>(id)
-  return element?.value || ''
-}
-
-export function getCheckboxValue(id: string): boolean {
-  const element = getElement<HTMLInputElement>(id)
-  return element?.checked || false
-}
-
-export function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
 }
 
 // Simple auto-incrementing counter for unique IDs
@@ -161,26 +115,3 @@ export function confirmAction(message: string): boolean {
   return confirm(message)
 }
 
-export const execute = (fn: () => Promise<void>) => fn()
-
-// Simple storage helpers - only user settings
-const storageDefaults: Storage = {
-  userSettings: DEFAULT_USER_SETTINGS,
-}
-
-export async function getStorage<K extends StorageKeys>(keys: K[]): Promise<StorageGet<K> & Partial<Storage>> {
-  const result = await browser.storage.sync.get(keys)
-  const typedResult = {} as StorageGet<K> & Partial<Storage>
-
-  for (const key of keys) {
-    if (key in storageDefaults) {
-      ; (typedResult as any)[key] = result[key] ?? storageDefaults[key]
-    }
-  }
-
-  return typedResult
-}
-
-export async function setStorage<K extends StorageKeys>(data: Partial<Pick<Storage, K>>): Promise<void> {
-  return browser.storage.sync.set(data)
-}
