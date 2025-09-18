@@ -1,5 +1,5 @@
 import { type ExtractedImage, type GetSessionDataResponse, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
-import { addEvent, generateId, getElement, getRequiredElement, logger, querySelector, querySelectorAll, TIMEOUTS, truncate } from './utils.js'
+import { addEvent, generateId, getElement, getRequiredElement, logger, querySelector, querySelectorAll, TIMEOUTS } from './utils.js'
 
 // Display settings constants - no longer customizable via UI
 const DISPLAY_SETTINGS = {
@@ -116,22 +116,10 @@ function convertToDisplayData(image: ExtractedImage): ImageDisplayData {
 function updatePageInfo() {
   if (!currentPageInfo) return
 
-  const titleElement = getElement('pageTitle')
-  const countElement = getElement('imageCount')
-  const urlElement = getElement<HTMLAnchorElement>('pageUrl')
-
-  if (titleElement) {
-    titleElement.textContent = titleElement.title = currentPageInfo.title
-  }
-
-  if (countElement) {
-    countElement.textContent = `${allImages.length} images found`
-  }
-
-  if (urlElement) {
-    const truncatedUrl = truncate(currentPageInfo.url, 50)
-    urlElement.href = urlElement.title = currentPageInfo.url
-    urlElement.textContent = truncatedUrl
+  const pageInfoElement = getElement('pageInfo')
+  if (pageInfoElement) {
+    const count = allImages.length
+    pageInfoElement.innerHTML = `<span class="count">(${count} images)</span> <a href="${currentPageInfo.url}" target="_blank" rel="noopener noreferrer">${currentPageInfo.title}</a>`
   }
 }
 
@@ -420,13 +408,14 @@ function applyFilters() {
 }
 
 function updateImageCount() {
-  const countElement = getElement('imageCount')
-  if (countElement) {
+  const pageInfoElement = getElement('pageInfo')
+  if (pageInfoElement && currentPageInfo) {
     const total = allImages.length
     const filtered = filteredImages.length
-    countElement.textContent = filtered === total
-      ? `${total} images found`
+    const countText = filtered === total
+      ? `${total} images`
       : `${filtered} of ${total} images`
+    pageInfoElement.innerHTML = `<span class="count">(${countText})</span> <a href="${currentPageInfo.url}" target="_blank" rel="noopener noreferrer">${currentPageInfo.title}</a>`
   }
 }
 
