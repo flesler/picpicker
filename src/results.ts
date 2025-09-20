@@ -116,10 +116,10 @@ function convertToDisplayData(image: ExtractedImage): ImageDisplayData {
 function updatePageInfo() {
   if (!currentPageInfo) return
 
-  const pageInfoElement = getElement('pageInfo')
-  if (pageInfoElement) {
-    const count = allImages.length
-    pageInfoElement.innerHTML = `<span class="count">(${count} images)</span> <a href="${currentPageInfo.url}" target="_blank" rel="noopener noreferrer">${currentPageInfo.title}</a>`
+  const pageLink = getElement<HTMLAnchorElement>('pageLink')
+  if (pageLink) {
+    pageLink.href = pageLink.title = currentPageInfo.url
+    pageLink.textContent = currentPageInfo.title
   }
 }
 
@@ -408,15 +408,8 @@ function applyFilters() {
 }
 
 function updateImageCount() {
-  const pageInfoElement = getElement('pageInfo')
-  if (pageInfoElement && currentPageInfo) {
-    const total = allImages.length
-    const filtered = filteredImages.length
-    const countText = filtered === total
-      ? `${total} images`
-      : `${filtered} of ${total} images`
-    pageInfoElement.innerHTML = `<span class="count">(${countText})</span> <a href="${currentPageInfo.url}" target="_blank" rel="noopener noreferrer">${currentPageInfo.title}</a>`
-  }
+  // Image count is now handled by the filter status in the UI controls
+  // No need to update page info since we removed the count display
 }
 
 function renderImages() {
@@ -434,7 +427,7 @@ function renderImages() {
   grid.style.display = 'grid'
   noImages.style.display = 'none'
 
-  grid.innerHTML = ''
+  grid.textContent = ''
 
   filteredImages.forEach(image => {
     const item = createImageItem(image)

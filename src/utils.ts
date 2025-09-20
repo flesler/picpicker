@@ -81,7 +81,7 @@ export function populateSelectOptions(
   options: Array<{ value: string; text: string }>,
   defaultOption?: { value: string; text: string },
 ) {
-  selectElement.innerHTML = ''
+  selectElement.textContent = ''
 
   if (defaultOption) {
     const option = document.createElement('option')

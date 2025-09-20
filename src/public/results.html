@@ -87,7 +87,7 @@
       align-self: flex-start;
     }
 
-    #pageInfo {
+    #pageLink {
       font-size: 1.25rem;
       font-weight: 600;
       color: #0f172a;
@@ -96,22 +96,11 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       max-width: 98%;
-    }
-
-    #pageInfo a {
-      color: inherit;
       text-decoration: none;
     }
 
-    #pageInfo a:hover {
+    #pageLink:hover {
       text-decoration: underline;
-    }
-
-    #pageInfo .count {
-      color: #64748b;
-      font-weight: 500;
-      font-size: 0.875rem;
-      margin-right: 0.5rem;
     }
 
     @media (max-width: 480px) {
@@ -521,7 +510,7 @@
         <div class="page-info-left">
           <div class="page-title-container">
             <img src="icons/icon128.png" alt="PicPicker" class="page-logo">
-            <div id="pageInfo"></div>
+            <a id="pageLink" href="#" target="_blank" rel="noopener noreferrer"></a>
           </div>
         </div>
           <div class="download-counter">
