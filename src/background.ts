@@ -56,9 +56,10 @@ async function extractImagesFromTab(tabId: number) {
     await new Promise(resolve => setTimeout(resolve, 100))
 
     // Send extraction request to content script
-    const response = await browser.tabs.sendMessage(tabId, {
-      action: MessageAction.EXTRACT_IMAGES,
-    } as ExtractImagesRequest) as { success: boolean; error?: string; images?: ExtractedImage[] }
+    const response = await browser.tabs.sendMessage<
+      ExtractImagesRequest, { success: boolean; error?: string; images?: ExtractedImage[] }>(
+        tabId, { action: MessageAction.EXTRACT_IMAGES },
+      )
 
     if (!response.success) {
       throw new Error(response.error || 'Extraction failed')

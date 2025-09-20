@@ -1,4 +1,5 @@
-import { type ExtractedImage, type GetSessionDataResponse, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
+import type { GetSessionDataRequest, GetSessionDataResponse } from './types.js'
+import { type ExtractedImage, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
 import { addEvent, generateId, getElement, getRequiredElement, logger, querySelector, querySelectorAll, TIMEOUTS } from './utils.js'
 
 // Display settings constants - no longer customizable via UI
@@ -12,8 +13,8 @@ const DISPLAY_SETTINGS = {
 
 let allImages: ImageDisplayData[] = []
 let filteredImages: ImageDisplayData[] = []
-let selectedImages = new Set<string>()
-let downloadedImages = new Set<string>() // Track downloaded images to avoid duplicates
+const selectedImages = new Set<string>()
+const downloadedImages = new Set<string>() // Track downloaded images to avoid duplicates
 let rangeStartIndex = -1 // For shift-click range start tracking
 let currentImageIndex = 0 // For keyboard navigation focus
 let currentPageInfo: PageInfo | null = null
@@ -41,10 +42,10 @@ async function initializePage() {
   if (sessionId) {
     try {
       // Request session data from background script
-      const response = await browser.runtime.sendMessage({
+      const response = await browser.runtime.sendMessage<GetSessionDataRequest, GetSessionDataResponse>({
         action: MessageAction.GET_SESSION_DATA,
         sessionId: sessionId,
-      }) as GetSessionDataResponse
+      })
 
       if (response.success && response.images && response.pageInfo) {
         currentPageInfo = response.pageInfo
@@ -649,7 +650,7 @@ function setGridSize(size: 'small' | 'medium' | 'large') {
 
   // Save preference
   displaySettings.thumbnailSize = size
-  browser.storage.sync.set({ displaySettings })
+  void browser.storage.sync.set({ displaySettings })
 }
 
 function openLightbox(image: ImageDisplayData) {
@@ -878,7 +879,7 @@ function navigateVertically(direction: 1 | -1) {
   const currentRow = Math.floor(currentImageIndex / columnsCount)
   const currentCol = currentImageIndex % columnsCount
 
-  let targetRow = currentRow + direction
+  const targetRow = currentRow + direction
   let targetIndex: number
 
   if (direction === 1) {
@@ -1057,7 +1058,7 @@ function handleEnterDownload() {
 
   if (isCurrentSelected) {
     // Current image is selected → download all selected
-    downloadSelectedImages()
+    void downloadSelectedImages()
   } else {
     // Current image is NOT selected → download just current
     downloadSingleImage(currentImage)
@@ -1071,7 +1072,7 @@ function downloadSingleImage(image: ImageDisplayData) {
     return
   }
 
-  downloadImage(image)
+  void downloadImage(image)
 }
 
 function showError(message: string) {

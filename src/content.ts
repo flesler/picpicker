@@ -47,7 +47,7 @@ function init() {
             logger.info(`Extracted ${images.length} images`)
             sendResponse({ success: true, images })
           })
-          .catch(error => {
+          .catch((error: Error) => {
             logger.error('Extraction failed', error)
             sendResponse({ success: false, error: error.message })
           })
@@ -72,7 +72,9 @@ async function extractAllImages(): Promise<ExtractedImage[]> {
     const timeoutPromise = new Promise<ExtractedImage[]>((_, reject) => {
       setTimeout(() => reject(new Error('Extraction timeout')), EXTRACTION_SETTINGS.extractionTimeout)
     })
-    const extractionPromise = performExtraction()
+    const extractionPromise = new Promise<ExtractedImage[]>((resolve) => {
+      resolve(performExtraction())
+    })
     return await Promise.race([extractionPromise, timeoutPromise])
   } catch (error) {
     logger.error('Extraction error', error)
@@ -80,15 +82,15 @@ async function extractAllImages(): Promise<ExtractedImage[]> {
   }
 }
 
-async function performExtraction(): Promise<ExtractedImage[]> {
+function performExtraction(): ExtractedImage[] {
   const images: ExtractedImage[] = []
   // Scan all elements in the DOM
   const allElements = querySelectorAll<Element>('*')
   logger.info(`Scanning ${allElements.length} elements`)
   // Helper to add image if valid and not already seen
-  const addImageIfValid = async (url: string | null | undefined, element: Element, source: ImageSourceType = 'img') => {
+  const addImageIfValid = (url: string | null | undefined, element: Element, source: ImageSourceType = 'img') => {
     if (!url) return
-    const extracted = await createImageObject(url, element, source)
+    const extracted = createImageObject(url, element, source)
     if (extracted && !images.some(img => img.u === extracted.u)) {
       images.push(extracted)
     }
@@ -107,18 +109,18 @@ async function performExtraction(): Promise<ExtractedImage[]> {
         const img = element as HTMLImageElement
 
         // Extract from src attribute
-        await addImageIfValid(img.src, img)
+        addImageIfValid(img.src, img)
 
         // Extract from srcset attribute (responsive images)
         const srcsetUrls = parseSrcset(img.srcset)
         for (const url of srcsetUrls) {
-          await addImageIfValid(url, img)
+          addImageIfValid(url, img)
         }
 
         // Extract from data attributes (lazy loading, etc.)
         const dataUrls = extractDataAttributes(img)
         for (const url of dataUrls) {
-          await addImageIfValid(url, img)
+          addImageIfValid(url, img)
         }
       }
 
@@ -128,7 +130,7 @@ async function performExtraction(): Promise<ExtractedImage[]> {
         // Extract from srcset attribute in source tags
         const srcsetUrls = parseSrcset(source.srcset)
         for (const url of srcsetUrls) {
-          await addImageIfValid(url, source)
+          addImageIfValid(url, source)
         }
       }
 
@@ -138,20 +140,20 @@ async function performExtraction(): Promise<ExtractedImage[]> {
         const bgImage = computed.backgroundImage
         if (bgImage?.includes('url(')) {
           const url = extractUrlFromCss(bgImage)
-          await addImageIfValid(url, element, 'bg')
+          addImageIfValid(url, element, 'bg')
         }
 
         // Also check data attributes for background images
         const dataUrls = extractDataAttributes(element)
         for (const url of dataUrls) {
-          await addImageIfValid(url, element, 'bg')
+          addImageIfValid(url, element, 'bg')
         }
       }
 
       // Extract from VIDEO poster
       if (EXTRACTION_SETTINGS.includeVideoPoster && element.tagName === 'VIDEO') {
         const video = element as HTMLVideoElement
-        await addImageIfValid(video.poster, video, 'video')
+        addImageIfValid(video.poster, video, 'video')
       }
 
       // Extract from SVG
@@ -159,7 +161,7 @@ async function performExtraction(): Promise<ExtractedImage[]> {
         // Convert SVG to data URL
         const svgData = new XMLSerializer().serializeToString(element)
         const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgData)
-        await addImageIfValid(svgUrl, element, 'svg')
+        addImageIfValid(svgUrl, element, 'svg')
       }
 
       // Extract from Canvas (expensive, disabled by default)
@@ -167,7 +169,7 @@ async function performExtraction(): Promise<ExtractedImage[]> {
         try {
           const canvas = element as HTMLCanvasElement
           const dataUrl = canvas.toDataURL()
-          await addImageIfValid(dataUrl, canvas, 'canvas')
+          addImageIfValid(dataUrl, canvas, 'canvas')
         } catch (e) {
           // Canvas may be tainted by cross-origin content
           logger.warn('Could not extract canvas', e)
@@ -187,7 +189,7 @@ async function performExtraction(): Promise<ExtractedImage[]> {
   return images
 }
 
-async function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): Promise<ExtractedImage | null> {
+function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): ExtractedImage | null {
   try {
     // Skip data URLs if configured
     if (EXTRACTION_SETTINGS.skipDataUrls && url.startsWith('data:')) {
