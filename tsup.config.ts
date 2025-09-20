@@ -3,10 +3,10 @@ import { readFileSync, writeFileSync } from 'fs'
 import { defineConfig } from 'tsup'
 
 export default defineConfig(() => {
+  const now = Date.now()
   const isFirefox = process.env.FIREFOX === '1'
   const manifest = generateManifest(isFirefox)
   const prod = process.env.NODE_ENV === 'production'
-  const now = Date.now()
   // Firefox doesn't need the polyfill
   const polyfill = isFirefox ? '' : 'browser-polyfill.js'
   return {

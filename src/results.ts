@@ -276,10 +276,13 @@ function populateSizeFilter() {
     const value = option.value
     if (value === 'small') {
       option.textContent = `Small (<100px) (${smallCount})`
+      option.disabled = smallCount === 0
     } else if (value === 'medium') {
       option.textContent = `Medium (100-500px) (${mediumCount})`
+      option.disabled = mediumCount === 0
     } else if (value === 'large') {
       option.textContent = `Large (>500px) (${largeCount})`
+      option.disabled = largeCount === 0
     }
   })
 }
@@ -311,6 +314,7 @@ function populateSourceFilter() {
       }
       const label = labels[value as keyof typeof labels] || value
       option.textContent = `${label} (${count})`
+      option.disabled = count === 0
     }
   })
 }
@@ -337,8 +341,10 @@ function populateVisibilityFilter() {
     const value = option.value
     if (value === 'visible') {
       option.textContent = `Visible in viewport (${visibleCount})`
+      option.disabled = visibleCount === 0
     } else if (value === 'hidden') {
       option.textContent = `Not visible (${hiddenCount})`
+      option.disabled = hiddenCount === 0
     }
   })
 }

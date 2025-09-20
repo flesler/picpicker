@@ -111,7 +111,7 @@ src/
 | Command | Description |
 |---------|-------------|
 | `npm run build` | Build optimized extension for Chrome |
-| `npm run build:firefox` | Build for Firefox (`FIREFOX=1 npm run build`) |
+| `npm run build:firefox` | Build for Firefox |
 | `npm run prepack` | **Complete validation** - lint + type check + build + zip |
 | `npm run lint:full` | TypeScript check + ESLint validation |
 | `npm run lint:fix` | Auto-fix linting issues |
