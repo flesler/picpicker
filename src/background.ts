@@ -1,5 +1,10 @@
-// Load polyfill in service worker context
-importScripts('browser-polyfill.js')
+import env from './env.js'
+
+// Firefox background context already has `browser`
+if (env.POLYFILL && typeof browser === 'undefined') {
+  // Chrome service worker context
+  importScripts(env.POLYFILL)
+}
 
 import type { ExtractedImage, ExtractImagesRequest, GetSessionDataRequest, PageInfo } from './types.js'
 import { MessageAction } from './types.js'
@@ -44,7 +49,7 @@ async function extractImagesFromTab(tabId: number) {
     logger.info('Injecting content script into active tab')
     await browser.scripting.executeScript({
       target: { tabId },
-      files: ['browser-polyfill.js', 'content.js'],
+      files: [env.POLYFILL, 'content.js'].filter(Boolean),
     })
 
     // Wait a moment for content script to initialize

@@ -7,6 +7,8 @@ export default defineConfig(() => {
   const manifest = generateManifest(isFirefox)
   const prod = process.env.NODE_ENV === 'production'
   const now = Date.now()
+  // Firefox doesn't need the polyfill
+  const polyfill = isFirefox ? '' : 'browser-polyfill.js'
   return {
     entry: {
       background: 'src/background.ts',
@@ -26,13 +28,15 @@ export default defineConfig(() => {
     define: {
       NAME: JSON.stringify(manifest.name),
       VERSION: JSON.stringify(manifest.version),
+      POLYFILL: JSON.stringify(polyfill),
       NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'development'),
     },
     esbuildPlugins: [
       copy({
         assets: [
           { from: ['src/public/**'], to: ['./'] },
-          { from: ['node_modules/webextension-polyfill/dist/browser-polyfill.min.js'], to: ['browser-polyfill.js'] },
+          // Firefox doesn't need the polyfill, it's already included
+          ...(polyfill ? [{ from: ['node_modules/webextension-polyfill/dist/browser-polyfill.min.js'], to: [polyfill] }] : []),
         ],
       }),
     ],
