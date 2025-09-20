@@ -1,16 +1,18 @@
 {
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "project": ["./tsconfig.json", "./bin/tsconfig.json", "./test/tsconfig.json"],
+    "project": ["./tsconfig.json", "./bin/tsconfig.json"],
     "ecmaVersion": 2022,
     "sourceType": "module",
     "warnOnUnsupportedTypeScriptVersion": false
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "no-unsanitized"
   ],
   "env": {
     "node": true,
+    "browser": true,
     "es2022": true
   },
   "settings": {
@@ -31,6 +33,8 @@
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "@typescript-eslint/consistent-type-imports": "error",
     "no-multiple-empty-lines":["error", { "max": 1, "maxEOF": 1, "maxBOF": 0 }],
-    "no-console": "off"
+    "no-console": "off",
+    "no-unsanitized/method": "error",
+    "no-unsanitized/property": "error"
   }
 } 
