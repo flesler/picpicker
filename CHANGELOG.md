@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
-#### [v2.0.0](https://github.com/flesler/picpicker/compare/v1.2.2...v2.0.0)
+#### [v2.0.1](https://github.com/flesler/picpicker/compare/v2.0.0...v2.0.1)
+
+- Remove the total image count in the results page title [`ca25639`](https://github.com/flesler/picpicker/commit/ca25639b0d3b7ab3774d65aada1b90a86acfd441)
+- Firefox doesn't actually need the browser-polyfill. Don't include it [`0073bb5`](https://github.com/flesler/picpicker/commit/0073bb514389adf63e78a2826ea8e51a5eee39fc)
+- Disable filter dropdown options that wouldn't match any items [`55d7efa`](https://github.com/flesler/picpicker/commit/55d7efa613244c9ec50a4a5153ee559e15245d78)
+
+### [v2.0.0](https://github.com/flesler/picpicker/compare/v1.2.2...v2.0.0)
 
 - Include the data_collection_permissions in Mozilla's manifests [`c40c3d7`](https://github.com/flesler/picpicker/commit/c40c3d7f37dfa1146e66207bcd99b5b8efc307de)
 - Remove the popup, clicking the extension auto-opens the results [`b385dec`](https://github.com/flesler/picpicker/commit/b385decf2381a4738176b436be66f7fe4c26f5c8)
