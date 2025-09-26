@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v2.2.0](https://github.com/flesler/picpicker/compare/v2.1.0...v2.2.0)
+
+- Add 'Save As' checkbox functionality and update download settings [`2896229`](https://github.com/flesler/picpicker/commit/28962296d101932e25f8442b22af5b95baae747d)
+- Un-implement the text search functionality [`7ad87de`](https://github.com/flesler/picpicker/commit/7ad87decf82bdab909dafa7ab3a4c25ecc65bfe0)
+
 #### [v2.1.0](https://github.com/flesler/picpicker/compare/v2.0.1...v2.1.0)
 
 - Add ESLint plugin to prevent unsanitized innerHTML and prevent releases with linting errors [`07cc167`](https://github.com/flesler/picpicker/commit/07cc167cde6ddc52fb3a23e50fa121f92347476c)
