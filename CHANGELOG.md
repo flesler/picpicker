@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v2.1.0](https://github.com/flesler/picpicker/compare/v2.0.1...v2.1.0)
+
+- Add ESLint plugin to prevent unsanitized innerHTML and prevent releases with linting errors [`07cc167`](https://github.com/flesler/picpicker/commit/07cc167cde6ddc52fb3a23e50fa121f92347476c)
+- Add the @typescript-eslint/recommended-type-checked ESLint config [`964d687`](https://github.com/flesler/picpicker/commit/964d68786052956ead1cc73eeb4ff664e5864548)
+- Double clicking a grid item auto-downloads it [`c0618ce`](https://github.com/flesler/picpicker/commit/c0618ce2e6ae9933611ce135dc450e03fdfddfd5)
+
 #### [v2.0.1](https://github.com/flesler/picpicker/compare/v2.0.0...v2.0.1)
 
 - Remove the total image count in the results page title [`ca25639`](https://github.com/flesler/picpicker/commit/ca25639b0d3b7ab3774d65aada1b90a86acfd441)
