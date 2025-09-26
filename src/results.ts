@@ -501,9 +501,9 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
   item.appendChild(imageContainer)
   item.appendChild(imageInfo)
 
-  // Single unified click handler for the entire item
+  // Unified click handling with double-click detection
   const checkboxEl = item.querySelector('.image-checkbox') as HTMLInputElement
-  // const imgEl = item.querySelector('img') // Not needed since we use openLightbox
+  let clickTimeout: ReturnType<typeof setTimeout> | null = null
 
   item.addEventListener('click', (e) => {
     const isCheckboxClick = e.target === checkboxEl
@@ -533,10 +533,35 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
       currentImageIndex = clickedIndex
       updateImageFocus()
 
-    } else if (e.target === img || e.target === item) {
-      // NORMAL CLICK: Open lightbox (only for image or item background)
-      openLightbox(image)
+    } else {
+      // NORMAL CLICK: Delay opening lightbox to allow double-click detection
+      if (clickTimeout) {
+        clearTimeout(clickTimeout)
+      }
+      clickTimeout = setTimeout(() => {
+        openLightbox(image)
+        clickTimeout = null
+      }, 300) // 300ms delay for double-click detection
     }
+  })
+
+  // Double-click handler for auto-download
+  item.addEventListener('dblclick', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Cancel pending lightbox opening
+    if (clickTimeout) {
+      clearTimeout(clickTimeout)
+      clickTimeout = null
+    }
+
+    const clickedIndex = filteredImages.findIndex(img => img.id === image.id)
+    currentImageIndex = clickedIndex
+    updateImageFocus()
+
+    // Use the same logic as Enter key
+    handleEnterDownload()
   })
 
   return item
