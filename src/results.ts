@@ -138,14 +138,6 @@ function setupEventListeners() {
   addEvent('sizeFilter', 'change', applyFilters)
   addEvent('sourceFilter', 'change', applyFilters)
   addEvent('visibilityFilter', 'change', applyFilters)
-  addEvent('textSearch', 'input', applyFilters)
-
-  // Show text search if any image has alt text
-  const hasAltText = allImages.some(img => img.a)
-  const textSearchGroup = getElement('textSearchGroup')
-  if (textSearchGroup) {
-    textSearchGroup.style.display = hasAltText ? 'block' : 'none'
-  }
 
   // View controls
   querySelectorAll('.view-btn').forEach(btn => {
@@ -369,7 +361,6 @@ function applyFilters() {
   const sizeFilter = getRequiredElement<HTMLSelectElement>('sizeFilter')
   const sourceFilter = getRequiredElement<HTMLSelectElement>('sourceFilter')
   const visibilityFilter = getRequiredElement<HTMLSelectElement>('visibilityFilter')
-  const textSearch = getRequiredElement<HTMLInputElement>('textSearch')
 
   filteredImages = allImages.filter(image => {
     // Format filter
@@ -408,13 +399,6 @@ function applyFilters() {
           if (image.v) return false
           break
       }
-    }
-
-    // Text search filter (alt text)
-    if (textSearch?.value?.trim()) {
-      const searchTerm = textSearch.value.toLowerCase().trim()
-      const altText = image.a?.toLowerCase() || ''
-      if (!altText.includes(searchTerm)) return false
     }
 
     return true
