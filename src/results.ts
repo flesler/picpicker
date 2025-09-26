@@ -9,6 +9,7 @@ const DISPLAY_SETTINGS = {
   sortBy: 'original' as 'original' | 'size' | 'format' | 'name',
   showMetadata: true,
   gridView: true,
+  saveAsDialog: false,
 }
 
 let allImages: ImageDisplayData[] = []
@@ -93,8 +94,9 @@ async function initializePage() {
   applyFilters()
   renderImages()
 
-  // Restore saved grid size
+  // Restore saved grid size and saveAs preference
   restoreGridSize()
+  restoreSaveAsPreference()
 
   // Hide loading
   const loading = getElement('loading')
@@ -105,6 +107,12 @@ function restoreGridSize() {
   // Use saved size or default to medium
   const savedSize = displaySettings.thumbnailSize || 'medium'
   setGridSize(savedSize)
+}
+
+function restoreSaveAsPreference() {
+  const checkbox = getRequiredElement<HTMLInputElement>('saveAsCheckbox')
+  const saveAsDialog = displaySettings.saveAsDialog ?? DISPLAY_SETTINGS.saveAsDialog
+  checkbox.checked = saveAsDialog
 }
 
 function convertToDisplayData(image: ExtractedImage): ImageDisplayData {
@@ -146,6 +154,12 @@ function setupEventListeners() {
       const size = target.dataset.size as 'small' | 'medium' | 'large'
       setGridSize(size)
     })
+  })
+
+  // Save As checkbox
+  addEvent('saveAsCheckbox', 'change', (e) => {
+    const target = e.target as HTMLInputElement
+    setSaveAsPreference(target.checked)
   })
 
   // Bulk actions
@@ -678,6 +692,12 @@ function setGridSize(size: 'small' | 'medium' | 'large') {
   void browser.storage.sync.set({ displaySettings })
 }
 
+function setSaveAsPreference(saveAsDialog: boolean) {
+  // Update setting and save
+  displaySettings.saveAsDialog = saveAsDialog
+  void browser.storage.sync.set({ displaySettings })
+}
+
 function openLightbox(image: ImageDisplayData) {
   const lightbox = getElement('lightbox')
   const lightboxImage = getElement<HTMLImageElement>('lightboxImage')
@@ -785,7 +805,7 @@ async function downloadSelectedImages() {
       await browser.downloads.download({
         url: image.u,
         filename: generateFilename(image),
-        saveAs: false,
+        saveAs: displaySettings.saveAsDialog,
       })
       downloadedImages.add(image.u) // Track as downloaded
       results.success++
@@ -820,7 +840,7 @@ async function downloadImage(image: ImageDisplayData) {
     await browser.downloads.download({
       url: image.u,
       filename: generateFilename(image),
-      saveAs: false,
+      saveAs: displaySettings.saveAsDialog,
     })
     downloadedImages.add(image.u) // Track as downloaded
     logger.info('Image downloaded', { url: image.u })

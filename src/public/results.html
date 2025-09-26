@@ -136,6 +136,11 @@
       font-weight: 500;
     }
 
+    .control-group input[type="checkbox"] {
+      margin-right: 0.5rem;
+      cursor: pointer;
+    }
+
     select, button {
       padding: 0.5rem 0.75rem;
       border: 1px solid #d1d5db;
@@ -563,6 +568,11 @@
           <label for="textSearch">Text:</label>
           <input type="text" id="textSearch" placeholder="Search alt text..."
             style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.875rem;">
+        </div>
+
+        <div class="control-group" title="If enabled, the browser will show a save dialog for each image download">
+          <input type="checkbox" id="saveAsCheckbox">
+          <label for="saveAsCheckbox">Save As</label>
         </div>
 
         <div class="view-controls">
