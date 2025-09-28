@@ -307,6 +307,17 @@
       box-shadow: none !important;
     }
 
+    /* Blocked domain images - just show warning emoji */
+    .image-container.blocked::after {
+      content: '⚠️';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      z-index: 1;
+    }
+
     .image-container {
       position: relative;
       aspect-ratio: 1;
@@ -437,9 +448,12 @@
       max-height: calc(90vh - 200px); /* Reserve space for info section */
       width: auto;
       height: auto;
+      min-width: 300px; /* Ensure some width even when no src */
+      min-height: 200px; /* Ensure some height even when no src */
       object-fit: contain;
       flex-shrink: 1;
       align-self: center; /* Center the image horizontally */
+      background: #f1f5f9; /* Light background for empty images */
     }
 
     .lightbox-info {
@@ -448,7 +462,6 @@
       border-radius: 0.5rem;
       margin-top: 1rem;
       flex-shrink: 0;
-      max-height: 180px;
       overflow-y: auto;
     }
 
@@ -579,6 +592,7 @@
   </header>
 
   <main class="main-content">
+
     <div class="action-container" id="actionContainer">
       <div class="shortcuts-content" id="shortcutsContent">
         <p><strong>Keyboard:</strong> Use the arrows to navigate (←→ for left/right, ↑↓ for up/down rows), spacebar to toggle,
@@ -623,6 +637,15 @@
       <img id="lightboxImage" src="" alt="">
       <div class="lightbox-info">
         <div id="lightboxMetadata">
+          <div id="lightboxBlockedWarning"
+            style="display: none; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 0.375rem; padding: 0.75rem; margin-bottom: 1rem; color: #92400e; font-size: 0.875rem;">
+            <div style="display: flex; align-items: center; gap: 0.375rem; font-weight: 600; margin-bottom: 0.25rem;">
+              <span>⚠️</span>
+              Cannot Display Image
+            </div>
+            This image cannot be displayed due to domain restrictions, but you can download it normally using the Download button,
+            Enter key, or double-click.
+          </div>
           <div class="metadata-row">
             <strong>URL:</strong>
             <a id="metadataUrl" href="#" target="_blank" rel="noopener noreferrer"

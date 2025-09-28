@@ -2,6 +2,13 @@ import type { GetSessionDataResponse, RequestMessage } from './types.js'
 import { type ExtractedImage, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
 import { addEvent, generateId, getRequiredElement, hideElement, logger, querySelector, querySelectorAll, showElement, TIMEOUTS, toggleElement } from './utils.js'
 
+// Domains that block CORS/CORP - mark images as failed to avoid user flagging
+const BLOCKED_DOMAINS = /(instagram\.com|facebook\.com|fbcdn\.net|cdninstagram\.com)/
+
+function isBlockedDomain(url: string): boolean {
+  return BLOCKED_DOMAINS.test(url)
+}
+
 // Display settings constants - no longer customizable via UI
 const DISPLAY_SETTINGS = {
   thumbnailSize: 'medium' as 'small' | 'medium' | 'large',
@@ -51,6 +58,12 @@ async function initializePage() {
       if (response.success && response.images && response.pageInfo) {
         currentPageInfo = response.pageInfo
         allImages = response.images.map(convertToDisplayData)
+
+        // Just log if we have blocked domain images - they'll be handled in rendering
+        const hasBlockedDomainImages = allImages.some(image => isBlockedDomain(image.u))
+        if (hasBlockedDomainImages) {
+          logger.info('Found blocked domain images - will be shown as blocked in UI')
+        }
 
         // Sort images once - prioritize visible images first, then by original order
         allImages.sort((a, b) => {
@@ -419,15 +432,19 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
 
   const isSelected = selectedImages.has(image.id)
   const isDownloaded = downloadedImages.has(image.u)
+  const isBlocked = isBlockedDomain(image.u)
 
   if (isSelected) item.classList.add('selected')
 
   const altText = image.a || ''
-  const checkboxClass = isDownloaded ? 'image-checkbox downloaded' : 'image-checkbox'
+  let checkboxClass = 'image-checkbox'
+  if (isDownloaded) {
+    checkboxClass += ' downloaded'
+  }
 
   // Create image container
   const imageContainer = document.createElement('div')
-  imageContainer.className = 'image-container'
+  imageContainer.className = isBlocked ? 'image-container blocked' : 'image-container'
 
   const checkbox = document.createElement('input')
   checkbox.type = 'checkbox'
@@ -440,7 +457,10 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
   }
 
   const img = document.createElement('img')
-  img.src = image.u
+  // Only set src for non-blocked images to prevent CORS errors
+  if (!isBlocked) {
+    img.src = image.u
+  }
   img.alt = altText
   img.loading = 'lazy'
   if (altText) {
@@ -480,7 +500,7 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
     // Decide action: toggle selection OR open lightbox
     const shouldToggleSelection = isCheckboxClick || isCtrlClick
 
-    if (shouldToggleSelection) {
+    if (shouldToggleSelection && !isDownloaded) {
       e.stopPropagation()
 
       const clickedIndex = filteredImages.findIndex(img => img.id === image.id)
@@ -490,7 +510,7 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
       currentImageIndex = clickedIndex
       updateImageFocus()
 
-    } else if (isShiftClick && rangeStartIndex >= 0) {
+    } else if (isShiftClick && rangeStartIndex >= 0 && !isDownloaded) {
       // SHIFT+CLICK: Range selection
       e.stopPropagation()
       const clickedIndex = filteredImages.findIndex(img => img.id === image.id)
@@ -648,7 +668,12 @@ function openLightbox(image: ImageDisplayData) {
   const lightbox = getRequiredElement('lightbox')
   const lightboxImage = getRequiredElement<HTMLImageElement>('lightboxImage')
 
-  lightboxImage.src = image.u
+  // Only set src for non-blocked images to prevent CORS errors
+  if (!isBlockedDomain(image.u)) {
+    lightboxImage.src = image.u
+  } else {
+    lightboxImage.removeAttribute('src')
+  }
   lightboxImage.alt = image.a || ''
 
   // Update metadata using existing HTML structure
@@ -662,6 +687,10 @@ function openLightbox(image: ImageDisplayData) {
     getRequiredElement('metadataAltText').textContent = image.a
   }
   toggleElement('metadataAltRow', !!image.a)
+
+  // Show/hide blocked domain warning for this specific image
+  toggleElement('lightboxBlockedWarning', isBlockedDomain(image.u))
+
   lightbox.classList.add('active')
 
   // Store current image for download
