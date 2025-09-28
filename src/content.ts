@@ -106,15 +106,22 @@ function performExtraction(): ExtractedImage[] {
       break
     }
 
+    // Skip elements that definitely don't contain images to avoid false positives
+    const { tagName } = element
+    if (tagName === 'SCRIPT' || tagName === 'STYLE' || tagName === 'LINK' || tagName === 'META' ||
+      tagName === 'HEAD' || tagName === 'TITLE' || tagName === 'BASE') {
+      continue
+    }
+
     try {
       // Extract from INPUT image buttons
-      if (element.tagName === 'INPUT' && (element as HTMLInputElement).type === 'image') {
+      if (tagName === 'INPUT' && (element as HTMLInputElement).type === 'image') {
         const input = element as HTMLInputElement
         addImageIfValid(input.src, input)
       }
 
       // Extract from IMG tags
-      if (element.tagName === 'IMG') {
+      if (tagName === 'IMG') {
         const img = element as HTMLImageElement
 
         // Extract from src attribute
@@ -134,7 +141,7 @@ function performExtraction(): ExtractedImage[] {
       }
 
       // Extract from SOURCE tags (picture elements)
-      if (element.tagName === 'SOURCE') {
+      if (tagName === 'SOURCE') {
         const source = element as HTMLSourceElement
         // Extract from srcset attribute in source tags
         const srcsetUrls = extractSrcset(source.srcset)
@@ -143,7 +150,7 @@ function performExtraction(): ExtractedImage[] {
         }
       }
 
-      // Extract from CSS background-image (inline styles and computed styles)
+      // Extract from CSS background-image and data attributes
       const htmlElement = element as HTMLElement
       // Try inline style first (higher priority), then computed style as fallback
       let url = extractUrlFromCss(htmlElement.style.backgroundImage)
@@ -174,13 +181,13 @@ function performExtraction(): ExtractedImage[] {
       }
 
       // Extract from VIDEO poster
-      if (element.tagName === 'VIDEO') {
+      if (tagName === 'VIDEO') {
         const video = element as HTMLVideoElement
         addImageIfValid(video.poster, video, 'video')
       }
 
       // Extract from SVG
-      if (element.tagName === 'SVG') {
+      if (tagName === 'SVG') {
         // Convert SVG to data URL
         const svgData = new XMLSerializer().serializeToString(element)
         const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgData)
@@ -188,7 +195,7 @@ function performExtraction(): ExtractedImage[] {
       }
 
       // Extract from Canvas (expensive, disabled by default)
-      if (EXTRACTION_SETTINGS.includeCanvas && element.tagName === 'CANVAS') {
+      if (EXTRACTION_SETTINGS.includeCanvas && tagName === 'CANVAS') {
         try {
           const canvas = element as HTMLCanvasElement
           const dataUrl = canvas.toDataURL()
@@ -334,9 +341,15 @@ function extractSrcset(srcset: string): string[] {
 // Extract image URLs from data-* attributes commonly used for lazy loading
 function extractDataAttributes(element: Element): string[] {
   const urls: string[] = []
-  // Check all data-* attributes for image URLs
+
+  // Only check data attributes that are commonly used for images
+  const imageDataAttributes = [
+    'src', 'original', 'lazy', 'srcset', 'background', 'bg', 'img', 'image', 'url', 'href',
+  ]
+
   if (element instanceof HTMLElement) {
-    for (const value of Object.values(element.dataset)) {
+    for (const attr of imageDataAttributes) {
+      const value = element.dataset[attr]
       if (value && isValidImageUrl(value)) {
         urls.push(value)
       }
@@ -351,10 +364,9 @@ function isValidImageUrl(url: string): boolean {
   if (!url || url.length < 4) return false
   url = normalizeUrl(url)
   // Only allow:
-  // - Full URLs with protocol (http://... or https://...)
-  // - Absolute paths from domain root (/path/image.jpg - but not protocol-relative //)
+  // - Full URLs with protocol AND path (http://site.com/path/image.jpg)
   // - Data URLs (data:...) but only if they're substantial (> 50 chars to skip tiny placeholders)
-  if (!/^(https?:\/\/|\/[^\/]|data:)/.test(url)) {
+  if (!/^(https?:\/\/[^\/]+\/.+|data:)/.test(url)) {
     return false
   }
   if (url.startsWith('data:') && url.length <= EXTRACTION_SETTINGS.minDataUrlSize) {
@@ -364,17 +376,9 @@ function isValidImageUrl(url: string): boolean {
 }
 
 function extractUrlFromCss(cssValue: string): string | null {
-  // Handle both url() and quoted content values
+  // Only extract from url() functions, ignore gradients, colors, etc.
   const urlMatch = cssValue.match(/url\(['"]?([^'")]*)['"]?\)/)
-  if (urlMatch) return urlMatch[1]
-
-  // Handle CSS content property which might just be a quoted URL
-  const contentMatch = cssValue.match(/^["']?([^"']+)["']?$/)
-  if (contentMatch && isValidImageUrl(contentMatch[1])) {
-    return contentMatch[1]
-  }
-
-  return null
+  return urlMatch ? urlMatch[1] : null
 }
 
 function getImageFormat(url: string): string {
