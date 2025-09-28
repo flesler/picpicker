@@ -213,11 +213,13 @@ function performExtraction(): ExtractedImage[] {
 }
 
 function normalizeUrl(url: string): string {
-  // Handle protocol-relative URLs (//example.com/image.jpg)
-  if (url.startsWith('//')) {
-    return window.location.protocol + url
+  try {
+    // Handle relative, root and protocol-relative URLs (//example.com/image.jpg)
+    return new URL(url, window.location.href).toString()
+  } catch (err) {
+    // Return original URL if normalization fails (malformed URL)
+    return url
   }
-  return url
 }
 
 function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): ExtractedImage | null {
