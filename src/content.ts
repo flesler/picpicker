@@ -3,8 +3,8 @@ import { logger, querySelectorAll, TIMEOUTS } from './utils.js'
 
 // Extraction settings constants - no longer passed via messages
 const EXTRACTION_SETTINGS = {
-  minWidth: 50,
-  minHeight: 50,
+  minWidth: 33,
+  minHeight: 33,
   maxFileSize: 50 * 1024 * 1024, // 50MB
   includeImgTags: true,
   includeBackgrounds: true,
@@ -102,6 +102,12 @@ function performExtraction(): ExtractedImage[] {
     }
 
     try {
+      // Extract from INPUT image buttons
+      if (element.tagName === 'INPUT' && (element as HTMLInputElement).type === 'image') {
+        const input = element as HTMLInputElement
+        addImageIfValid(input.src, input)
+      }
+
       // Extract from IMG tags
       if (EXTRACTION_SETTINGS.includeImgTags && element.tagName === 'IMG') {
         const img = element as HTMLImageElement
@@ -132,12 +138,30 @@ function performExtraction(): ExtractedImage[] {
         }
       }
 
-      // Extract from background images
+      // Extract from CSS image properties
       if (EXTRACTION_SETTINGS.includeBackgrounds) {
         const computed = window.getComputedStyle(element)
+
+        // Background images
         const bgImage = computed.backgroundImage
         if (bgImage?.includes('url(')) {
           const url = extractUrlFromCss(bgImage)
+          addImageIfValid(url, element, 'bg')
+        }
+
+        // CSS content images (::before, ::after)
+        // Note: getComputedStyle only returns content for pseudo-elements when called on them
+        // But we can check if this element commonly uses ::before/::after with content images
+        const beforeStyle = window.getComputedStyle(element, '::before')
+        const afterStyle = window.getComputedStyle(element, '::after')
+
+        if (beforeStyle.content?.includes('url(')) {
+          const url = extractUrlFromCss(beforeStyle.content)
+          addImageIfValid(url, element, 'bg')
+        }
+
+        if (afterStyle.content?.includes('url(')) {
+          const url = extractUrlFromCss(afterStyle.content)
           addImageIfValid(url, element, 'bg')
         }
 
@@ -332,8 +356,17 @@ function isValidImageUrl(url: string): boolean {
 }
 
 function extractUrlFromCss(cssValue: string): string | null {
-  const match = cssValue.match(/url\(['"]?([^'")]*)['"]?\)/)
-  return match ? match[1] : null
+  // Handle both url() and quoted content values
+  const urlMatch = cssValue.match(/url\(['"]?([^'")]*)['"]?\)/)
+  if (urlMatch) return urlMatch[1]
+
+  // Handle CSS content property which might just be a quoted URL
+  const contentMatch = cssValue.match(/^["']?([^"']+)["']?$/)
+  if (contentMatch && isValidImageUrl(contentMatch[1])) {
+    return contentMatch[1]
+  }
+
+  return null
 }
 
 function getImageFormat(url: string): string {
@@ -342,7 +375,7 @@ function getImageFormat(url: string): string {
     return match ? match[1] : 'unknown'
   }
 
-  const urlPath = url.split('?')[0] // Remove query params
+  const urlPath = url.split('?')[0].split('#')[0] // Remove query params and hash fragments
   const match = urlPath.match(/\.([a-zA-Z]+)$/)
   return match ? match[1].toLowerCase() : 'unknown'
 }
