@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v2.3.0](https://github.com/flesler/picpicker/compare/v2.2.0...v2.3.0)
+
+- General QoL improvements, reduce DOM creation code and add some DOM helpers [`fbfe0e8`](https://github.com/flesler/picpicker/commit/fbfe0e8daaaa197950942a15e9529498ebb82483)
+- Remove much of the URL filtering logic, since all URLs are known to be images by context [`341aed8`](https://github.com/flesler/picpicker/commit/341aed8543998ac8c983def4c3684b3666d39b64)
+- Extract image from ::before and ::after image sources [`654cf70`](https://github.com/flesler/picpicker/commit/654cf70c6b3dac5d78e612e0146a7824345b3dbb)
+- Transition from ESLint from recommended-type-checked to strict-type-checked [`ed3e25c`](https://github.com/flesler/picpicker/commit/ed3e25cb1e05cbec90fa4d90866a358e687b6b6f)
+- Fire an alert when no images could be extracted from a page [`8437c69`](https://github.com/flesler/picpicker/commit/8437c69d27d521ac7ad6a194809e6037c1f86cc8)
+- Improve background extraction, now works in Getty images [`018a91d`](https://github.com/flesler/picpicker/commit/018a91db01b3f108b1b1080e39a5f1577f61b913)
+- Handle URLs without protocol, prepend it [`066c257`](https://github.com/flesler/picpicker/commit/066c257a64994e7646e2934d3469e7b921b10fad)
+- Handle a few domains known to block via CORS/CORP, don't even try to display those and show a warning [`67465f6`](https://github.com/flesler/picpicker/commit/67465f6e12975a54df55e9880dec4872b3c7831b)
+
 #### [v2.2.0](https://github.com/flesler/picpicker/compare/v2.1.0...v2.2.0)
 
 - Add 'Save As' checkbox functionality and update download settings [`2896229`](https://github.com/flesler/picpicker/commit/28962296d101932e25f8442b22af5b95baae747d)
