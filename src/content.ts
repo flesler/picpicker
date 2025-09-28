@@ -12,7 +12,6 @@ const EXTRACTION_SETTINGS = {
   includeAltText: true,
   includeVideoPoster: true,
   includeCanvas: false,
-  allowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'apng', 'ico', 'bmp', 'tiff', 'tif', 'heic', 'heif'],
   maxImagesPerPage: 1000,
   extractionTimeout: 10000,
 } as const
@@ -190,11 +189,8 @@ function performExtraction(): ExtractedImage[] {
 
 function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): ExtractedImage | null {
   try {
-    // Get format from URL
+    // All our extraction sources are already image-contextual, so trust them
     const format = getImageFormat(url)
-    if (!(EXTRACTION_SETTINGS.allowedFormats as readonly string[]).includes(format)) {
-      return null
-    }
 
     // Get dimensions based on element type and available properties
     const rect = element.getBoundingClientRect()
@@ -330,17 +326,9 @@ function extractDataAttributes(element: Element): string[] {
   return urls
 }
 
-// Basic validation for image URLs - used for quick filtering in data-* attributes
+// Simple URL validation for data-* attributes - we're already in image contexts
 function isValidImageUrl(url: string): boolean {
-  if (!url || url.length < 4) return false
-
-  // Always accept data:image URLs (they're definitely images)
-  if (url.startsWith('data:image/')) return true
-
-  // For all other URLs, check if they have valid image extensions
-  const formats = EXTRACTION_SETTINGS.allowedFormats.join('|')
-  const imageExtensions = new RegExp(`\\.(${formats})(\\?|#|$)`, 'i')
-  return imageExtensions.test(url)
+  return !!url && url.length > 3 && /^(https?:\/\/|\/|\.\/|data:)/.test(url)
 }
 
 function extractUrlFromCss(cssValue: string): string | null {
