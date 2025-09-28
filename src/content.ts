@@ -12,6 +12,8 @@ const EXTRACTION_SETTINGS = {
   includeCanvas: <boolean>false,
   maxImagesPerPage: 1000,
   extractionTimeout: 10000,
+  dataAttributes: ['src', 'original', 'lazy', 'background', 'bg', 'img', 'image', 'url', 'href'],
+  ignoreTags: <string[]>(['script', 'style', 'link', 'meta', 'head', 'title', 'base']),
 } as const
 
 logger.info('content script loaded')
@@ -106,13 +108,11 @@ function performExtraction(): ExtractedImage[] {
       break
     }
 
-    // Skip elements that definitely don't contain images to avoid false positives
     const { tagName } = element
-    if (tagName === 'SCRIPT' || tagName === 'STYLE' || tagName === 'LINK' || tagName === 'META' ||
-      tagName === 'HEAD' || tagName === 'TITLE' || tagName === 'BASE') {
+    if (EXTRACTION_SETTINGS.ignoreTags.includes(tagName.toLowerCase())) {
+      // Skip elements that definitely don't contain images to avoid false positives
       continue
     }
-
     try {
       // Extract from INPUT image buttons
       if (tagName === 'INPUT' && (element as HTMLInputElement).type === 'image') {
@@ -132,12 +132,6 @@ function performExtraction(): ExtractedImage[] {
         for (const url of srcsetUrls) {
           addImageIfValid(url, img)
         }
-
-        // Extract from data attributes (lazy loading, etc.)
-        const dataUrls = extractDataAttributes(img)
-        for (const url of dataUrls) {
-          addImageIfValid(url, img)
-        }
       }
 
       // Extract from SOURCE tags (picture elements)
@@ -146,7 +140,7 @@ function performExtraction(): ExtractedImage[] {
         // Extract from srcset attribute in source tags
         const srcsetUrls = extractSrcset(source.srcset)
         for (const url of srcsetUrls) {
-          addImageIfValid(url, source)
+          addImageIfValid(url, source, 'source')
         }
       }
 
@@ -174,10 +168,10 @@ function performExtraction(): ExtractedImage[] {
         addImageIfValid(url, element, 'bg')
       }
 
-      // Also check data attributes for background images
+      // Also check data attributes for all elements (lazy loading, etc.)
       const dataUrls = extractDataAttributes(element)
       for (const url of dataUrls) {
-        addImageIfValid(url, element, 'bg')
+        addImageIfValid(url, element, 'data')
       }
 
       // Extract from VIDEO poster
@@ -341,14 +335,9 @@ function extractSrcset(srcset: string): string[] {
 // Extract image URLs from data-* attributes commonly used for lazy loading
 function extractDataAttributes(element: Element): string[] {
   const urls: string[] = []
-
-  // Only check data attributes that are commonly used for images
-  const imageDataAttributes = [
-    'src', 'original', 'lazy', 'srcset', 'background', 'bg', 'img', 'image', 'url', 'href',
-  ]
-
   if (element instanceof HTMLElement) {
-    for (const attr of imageDataAttributes) {
+  // Only check data attributes that are commonly used for images
+    for (const attr of EXTRACTION_SETTINGS.dataAttributes) {
       const value = element.dataset[attr]
       if (value && isValidImageUrl(value)) {
         urls.push(value)

@@ -2,7 +2,7 @@
 // Using short keys to minimize JSON payload size when sending 500+ images
 
 // Strongly typed image source types
-export type ImageSourceType = 'img' | 'bg' | 'svg' | 'canvas' | 'video'
+export type ImageSourceType = 'img' | 'bg' | 'svg' | 'canvas' | 'video' | 'data' | 'source'
 
 export interface ExtractedImage {
   u: string              // url
