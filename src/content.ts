@@ -39,7 +39,12 @@ function init() {
         extractAllImages()
           .then(images => {
             logger.info(`Extracted ${images.length} images`)
-            sendResponse({ success: true, images })
+            if (images.length === 0) {
+              alert('PicPicker: No images could be extracted from this page. The page might not contain any images or they might be loaded dynamically.')
+              sendResponse({ success: false, error: 'No images found' })
+            } else {
+              sendResponse({ success: true, images })
+            }
           })
           .catch((err: Error) => {
             logger.error('Extraction failed', err)
