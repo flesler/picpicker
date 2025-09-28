@@ -88,7 +88,9 @@ function performExtraction(): ExtractedImage[] {
   logger.info(`Scanning ${allElements.length} elements`)
   // Helper to add image if valid and not already seen
   const addImageIfValid = (url: string | null | undefined, element: Element, source: ImageSourceType = 'img') => {
-    if (!url) return
+    if (!url || !isValidImageUrl(url)) {
+      return
+    }
     const extracted = createImageObject(url, element, source)
     if (extracted && !images.some(img => img.u === extracted.u)) {
       images.push(extracted)
@@ -209,7 +211,6 @@ function performExtraction(): ExtractedImage[] {
 }
 
 function normalizeUrl(url: string): string {
-  if (!url) return url
   // Handle protocol-relative URLs (//example.com/image.jpg)
   if (url.startsWith('//')) {
     return window.location.protocol + url
@@ -220,9 +221,9 @@ function normalizeUrl(url: string): string {
 function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): ExtractedImage | null {
   try {
     // Normalize URL to add protocol if missing
-    const normalizedUrl = normalizeUrl(url)
+    url = normalizeUrl(url)
     // All our extraction sources are already image-contextual, so trust them
-    const format = getImageFormat(normalizedUrl)
+    const format = getImageFormat(url)
 
     // Get dimensions based on element type and available properties
     const rect = element.getBoundingClientRect()
@@ -301,7 +302,7 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
     const alt = (element as HTMLImageElement).alt || (element as HTMLElement).title || undefined
     const visibleInViewport = isElementVisibleInViewport(element)
     return {
-      u: normalizedUrl,
+      u: url,
       w: width ? Math.round(width) : undefined,
       h: height ? Math.round(height) : undefined,
       a: alt,
@@ -354,7 +355,13 @@ function extractDataAttributes(element: Element): string[] {
 
 // Simple URL validation for data-* attributes - we're already in image contexts
 function isValidImageUrl(url: string): boolean {
-  return !!url && url.length > 3 && /^(https?:\/\/|\/|\.\/|data:)/.test(url)
+  if (!url || url.length < 4) return false
+
+  // Only allow:
+  // - Full URLs with protocol (http://... or https://...)
+  // - Absolute paths from domain root (/path/image.jpg - but not protocol-relative //)
+  // - Data URLs (data:...)
+  return /^(https?:\/\/|\/[^\/]|data:)/.test(normalizeUrl(url))
 }
 
 function extractUrlFromCss(cssValue: string): string | null {
