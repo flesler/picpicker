@@ -139,38 +139,34 @@ function performExtraction(): ExtractedImage[] {
         }
       }
 
-      // Extract from CSS image properties
-      if (element.tagName === 'CSS') {
+      // Extract from CSS background-image (inline styles and computed styles)
+      const htmlElement = element as HTMLElement
+      // Try inline style first (higher priority), then computed style as fallback
+      let url = extractUrlFromCss(htmlElement.style.backgroundImage)
+      if (!url) {
         const computed = window.getComputedStyle(element)
+        url = extractUrlFromCss(computed.backgroundImage)
+      }
+      addImageIfValid(url, element, 'bg')
 
-        // Background images
-        const bgImage = computed.backgroundImage
-        if (bgImage.includes('url(')) {
-          const url = extractUrlFromCss(bgImage)
-          addImageIfValid(url, element, 'bg')
-        }
+      // CSS content images (::before, ::after)
+      const beforeStyle = window.getComputedStyle(element, '::before')
+      const afterStyle = window.getComputedStyle(element, '::after')
 
-        // CSS content images (::before, ::after)
-        // Note: getComputedStyle only returns content for pseudo-elements when called on them
-        // But we can check if this element commonly uses ::before/::after with content images
-        const beforeStyle = window.getComputedStyle(element, '::before')
-        const afterStyle = window.getComputedStyle(element, '::after')
+      if (beforeStyle.content.includes('url(')) {
+        const url = extractUrlFromCss(beforeStyle.content)
+        addImageIfValid(url, element, 'bg')
+      }
 
-        if (beforeStyle.content.includes('url(')) {
-          const url = extractUrlFromCss(beforeStyle.content)
-          addImageIfValid(url, element, 'bg')
-        }
+      if (afterStyle.content.includes('url(')) {
+        const url = extractUrlFromCss(afterStyle.content)
+        addImageIfValid(url, element, 'bg')
+      }
 
-        if (afterStyle.content.includes('url(')) {
-          const url = extractUrlFromCss(afterStyle.content)
-          addImageIfValid(url, element, 'bg')
-        }
-
-        // Also check data attributes for background images
-        const dataUrls = extractDataAttributes(element)
-        for (const url of dataUrls) {
-          addImageIfValid(url, element, 'bg')
-        }
+      // Also check data attributes for background images
+      const dataUrls = extractDataAttributes(element)
+      for (const url of dataUrls) {
+        addImageIfValid(url, element, 'bg')
       }
 
       // Extract from VIDEO poster
@@ -212,10 +208,21 @@ function performExtraction(): ExtractedImage[] {
   return images
 }
 
+function normalizeUrl(url: string): string {
+  if (!url) return url
+  // Handle protocol-relative URLs (//example.com/image.jpg)
+  if (url.startsWith('//')) {
+    return window.location.protocol + url
+  }
+  return url
+}
+
 function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): ExtractedImage | null {
   try {
+    // Normalize URL to add protocol if missing
+    const normalizedUrl = normalizeUrl(url)
     // All our extraction sources are already image-contextual, so trust them
-    const format = getImageFormat(url)
+    const format = getImageFormat(normalizedUrl)
 
     // Get dimensions based on element type and available properties
     const rect = element.getBoundingClientRect()
@@ -294,7 +301,7 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
     const alt = (element as HTMLImageElement).alt || (element as HTMLElement).title || undefined
     const visibleInViewport = isElementVisibleInViewport(element)
     return {
-      u: url,
+      u: normalizedUrl,
       w: width ? Math.round(width) : undefined,
       h: height ? Math.round(height) : undefined,
       a: alt,
