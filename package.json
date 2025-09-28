@@ -19,7 +19,7 @@
     "build:watch": "tsup --watch",
     "build:zip": "cd dist && zip -r ../${npm_package_name}-${npm_package_version}.zip * && cd ..",
     "build:source": "bin/export-source.sh",
-    "build:clean": "npx rimraf dist/* *.tsbuildinfo *.zip",
+    "build:clean": "rimraf dist/* *.tsbuildinfo *.zip",
     "build:prod": "npm run lint:full && NODE_ENV=production npm run build && npm run build:zip",
     "build:prod:firefox": "FIREFOX=1 npm run build:prod && npm run build:source && npm run lint:addon ${npm_package_name}-${npm_package_version}.zip",
     "dev": "npm run build:watch",
@@ -68,6 +68,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "srcset": "^5.0.2",
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
@@ -81,6 +82,7 @@
     "esbuild-plugin-copy": "^2.1.1",
     "eslint": "^8.57.0",
     "eslint-plugin-no-unsanitized": "^4.1.4",
+    "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"

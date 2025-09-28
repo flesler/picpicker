@@ -1,3 +1,4 @@
+import { parseSrcset } from 'srcset'
 import type { RequestMessage } from './types.js'
 import { MessageAction, type ExtractedImage, type ImageSourceType } from './types.js'
 import { logger, querySelectorAll, TIMEOUTS } from './utils.js'
@@ -7,6 +8,7 @@ const EXTRACTION_SETTINGS = {
   minWidth: 33,
   minHeight: 33,
   maxFileSize: 50 * 1024 * 1024, // 50MB
+  minDataUrlSize: 50,
   includeCanvas: <boolean>false,
   maxImagesPerPage: 1000,
   extractionTimeout: 10000,
@@ -119,7 +121,7 @@ function performExtraction(): ExtractedImage[] {
         addImageIfValid(img.src, img)
 
         // Extract from srcset attribute (responsive images)
-        const srcsetUrls = parseSrcset(img.srcset)
+        const srcsetUrls = extractSrcset(img.srcset)
         for (const url of srcsetUrls) {
           addImageIfValid(url, img)
         }
@@ -135,7 +137,7 @@ function performExtraction(): ExtractedImage[] {
       if (element.tagName === 'SOURCE') {
         const source = element as HTMLSourceElement
         // Extract from srcset attribute in source tags
-        const srcsetUrls = parseSrcset(source.srcset)
+        const srcsetUrls = extractSrcset(source.srcset)
         for (const url of srcsetUrls) {
           addImageIfValid(url, source)
         }
@@ -316,26 +318,15 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
   }
 }
 
-// Parse srcset attribute to extract all image URLs
-function parseSrcset(srcset: string): string[] {
-  const urls: string[] = []
-
-  // Split by comma and parse each descriptor
-  const candidates = srcset.split(',').map(s => s.trim())
-
-  for (const candidate of candidates) {
-    // Format: "url 1x" or "url 480w" or just "url"
-    const parts = candidate.split(/\s+/)
-    if (parts.length > 0 && parts[0]) {
-      const url = parts[0].trim()
-      if (url && (!url.startsWith('data:') || url.length > 50)) {
-        // Skip tiny data URLs but include larger ones
-        urls.push(url)
-      }
-    }
+// Parse srcset attribute to extract all image URLs using proper srcset library
+function extractSrcset(srcset: string): string[] {
+  try {
+    // Return the bigger images first (reverse order like before)
+    return parseSrcset(srcset).map(item => item.url).reverse()
+  } catch (err) {
+    logger.warn('Failed to parse srcset, falling back to empty array', err)
+    return []
   }
-  // Return the bigger images first
-  return urls.reverse()
 }
 
 // Extract image URLs from data-* attributes commonly used for lazy loading
@@ -356,12 +347,18 @@ function extractDataAttributes(element: Element): string[] {
 // Simple URL validation for data-* attributes - we're already in image contexts
 function isValidImageUrl(url: string): boolean {
   if (!url || url.length < 4) return false
-
+  url = normalizeUrl(url)
   // Only allow:
   // - Full URLs with protocol (http://... or https://...)
   // - Absolute paths from domain root (/path/image.jpg - but not protocol-relative //)
-  // - Data URLs (data:...)
-  return /^(https?:\/\/|\/[^\/]|data:)/.test(normalizeUrl(url))
+  // - Data URLs (data:...) but only if they're substantial (> 50 chars to skip tiny placeholders)
+  if (!/^(https?:\/\/|\/[^\/]|data:)/.test(url)) {
+    return false
+  }
+  if (url.startsWith('data:') && url.length <= EXTRACTION_SETTINGS.minDataUrlSize) {
+    return false
+  }
+  return true
 }
 
 function extractUrlFromCss(cssValue: string): string | null {

@@ -48,11 +48,12 @@ export default defineConfig(() => {
     outExtension() {
       return { js: '.js' }
     },
-    async onSuccess() {
+    onSuccess() {
       writeFileSync('dist/manifest.json', JSON.stringify(manifest, null, 2))
       if (!prod) {
         console.log(`${isFirefox ? 'Firefox' : 'Chrome'} extension build success in ${Date.now() - now}ms`)
       }
+      return Promise.resolve()
     },
   }
 })
