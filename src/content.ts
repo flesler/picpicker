@@ -1,4 +1,5 @@
-import { MessageAction, type ExtractedImage, type ExtractImagesRequest, type ImageSourceType } from './types.js'
+import type { RequestMessage } from './types.js'
+import { MessageAction, type ExtractedImage, type ImageSourceType } from './types.js'
 import { logger, querySelectorAll, TIMEOUTS } from './utils.js'
 
 // Extraction settings constants - no longer passed via messages
@@ -6,12 +7,7 @@ const EXTRACTION_SETTINGS = {
   minWidth: 33,
   minHeight: 33,
   maxFileSize: 50 * 1024 * 1024, // 50MB
-  includeImgTags: true,
-  includeBackgrounds: true,
-  includeSvg: true,
-  includeAltText: true,
-  includeVideoPoster: true,
-  includeCanvas: false,
+  includeCanvas: <boolean>false,
   maxImagesPerPage: 1000,
   extractionTimeout: 10000,
 } as const
@@ -22,7 +18,7 @@ let isInitialized = false
 
 function init() {
   // Check if extension context is valid
-  if (!browser?.runtime?.id) {
+  if (!browser.runtime.id) {
     logger.warn('Extension context not ready, will retry in 1 second...')
     setTimeout(init, TIMEOUTS.CONTEXT_RETRY)
     return
@@ -37,7 +33,7 @@ function init() {
   try {
     // Set up message listener for image extraction
     browser.runtime.onMessage.addListener((request: unknown, sender: unknown, sendResponse: (response?: { success: boolean; images?: ExtractedImage[]; error?: string }) => void): true => {
-      const typedRequest = request as ExtractImagesRequest
+      const typedRequest = request as RequestMessage
       if (typedRequest.action === MessageAction.EXTRACT_IMAGES) {
         logger.info('Image extraction triggered')
         extractAllImages()
@@ -45,9 +41,9 @@ function init() {
             logger.info(`Extracted ${images.length} images`)
             sendResponse({ success: true, images })
           })
-          .catch((error: Error) => {
-            logger.error('Extraction failed', error)
-            sendResponse({ success: false, error: error.message })
+          .catch((err: Error) => {
+            logger.error('Extraction failed', err)
+            sendResponse({ success: false, error: err.message })
           })
 
         return true // Keep sendResponse channel open for async response
@@ -68,7 +64,7 @@ async function extractAllImages(): Promise<ExtractedImage[]> {
   try {
     // Use timeout to prevent hanging on large pages
     const timeoutPromise = new Promise<ExtractedImage[]>((_, reject) => {
-      setTimeout(() => reject(new Error('Extraction timeout')), EXTRACTION_SETTINGS.extractionTimeout)
+      setTimeout(() => { reject(new Error('Extraction timeout')) }, EXTRACTION_SETTINGS.extractionTimeout)
     })
     const extractionPromise = new Promise<ExtractedImage[]>((resolve) => {
       resolve(performExtraction())
@@ -109,7 +105,7 @@ function performExtraction(): ExtractedImage[] {
       }
 
       // Extract from IMG tags
-      if (EXTRACTION_SETTINGS.includeImgTags && element.tagName === 'IMG') {
+      if (element.tagName === 'IMG') {
         const img = element as HTMLImageElement
 
         // Extract from src attribute
@@ -129,7 +125,7 @@ function performExtraction(): ExtractedImage[] {
       }
 
       // Extract from SOURCE tags (picture elements)
-      if (EXTRACTION_SETTINGS.includeImgTags && element.tagName === 'SOURCE') {
+      if (element.tagName === 'SOURCE') {
         const source = element as HTMLSourceElement
         // Extract from srcset attribute in source tags
         const srcsetUrls = parseSrcset(source.srcset)
@@ -139,12 +135,12 @@ function performExtraction(): ExtractedImage[] {
       }
 
       // Extract from CSS image properties
-      if (EXTRACTION_SETTINGS.includeBackgrounds) {
+      if (element.tagName === 'CSS') {
         const computed = window.getComputedStyle(element)
 
         // Background images
         const bgImage = computed.backgroundImage
-        if (bgImage?.includes('url(')) {
+        if (bgImage.includes('url(')) {
           const url = extractUrlFromCss(bgImage)
           addImageIfValid(url, element, 'bg')
         }
@@ -155,12 +151,12 @@ function performExtraction(): ExtractedImage[] {
         const beforeStyle = window.getComputedStyle(element, '::before')
         const afterStyle = window.getComputedStyle(element, '::after')
 
-        if (beforeStyle.content?.includes('url(')) {
+        if (beforeStyle.content.includes('url(')) {
           const url = extractUrlFromCss(beforeStyle.content)
           addImageIfValid(url, element, 'bg')
         }
 
-        if (afterStyle.content?.includes('url(')) {
+        if (afterStyle.content.includes('url(')) {
           const url = extractUrlFromCss(afterStyle.content)
           addImageIfValid(url, element, 'bg')
         }
@@ -173,13 +169,13 @@ function performExtraction(): ExtractedImage[] {
       }
 
       // Extract from VIDEO poster
-      if (EXTRACTION_SETTINGS.includeVideoPoster && element.tagName === 'VIDEO') {
+      if (element.tagName === 'VIDEO') {
         const video = element as HTMLVideoElement
         addImageIfValid(video.poster, video, 'video')
       }
 
       // Extract from SVG
-      if (EXTRACTION_SETTINGS.includeSvg && element.tagName === 'SVG') {
+      if (element.tagName === 'SVG') {
         // Convert SVG to data URL
         const svgData = new XMLSerializer().serializeToString(element)
         const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgData)
@@ -221,11 +217,12 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
     let width: number | undefined
     let height: number | undefined
 
+    const w = element.getAttribute('width')
+    const h = element.getAttribute('height')
     if (source === 'img') {
       // Get width/height attributes from any element (img, source, etc.)
-      const attrWidth = element.getAttribute('width') ? parseInt(element.getAttribute('width')!, 10) : undefined
-      const attrHeight = element.getAttribute('height') ? parseInt(element.getAttribute('height')!, 10) : undefined
-
+      const attrWidth = w ? parseInt(w, 10) : undefined
+      const attrHeight = h ? parseInt(h, 10) : undefined
       // Get computed styles for CSS-defined dimensions
       const computed = window.getComputedStyle(element)
       const computedWidth = computed.width && computed.width !== 'auto' && computed.width !== '0px'
@@ -260,10 +257,10 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
       const video = element as HTMLVideoElement
       // For video posters, use element dimensions (video size)
       width = video.videoWidth ||
-        (video.getAttribute('width') ? parseInt(video.getAttribute('width')!, 10) : undefined) ||
+        (w ? parseInt(w, 10) : undefined) ||
         (rect.width > 0 ? rect.width : undefined)
       height = video.videoHeight ||
-        (video.getAttribute('height') ? parseInt(video.getAttribute('height')!, 10) : undefined) ||
+        (h ? parseInt(h, 10) : undefined) ||
         (rect.height > 0 ? rect.height : undefined)
     } else {
       // For other sources (svg, canvas, bg), use computed styles + element dimensions
@@ -286,18 +283,11 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
       height = parsedHeight || (rect.height > 0 ? rect.height : undefined)
     }
 
-    // Check size filters
     if (width && width < EXTRACTION_SETTINGS.minWidth) return null
     if (height && height < EXTRACTION_SETTINGS.minHeight) return null
 
-    // Get alt text only if enabled (reduces payload size)
-    const alt = EXTRACTION_SETTINGS.includeAltText
-      ? ((element as HTMLImageElement).alt || (element as HTMLElement).title || undefined)
-      : undefined
-
-    // Check if element is visible in viewport
+    const alt = (element as HTMLImageElement).alt || (element as HTMLElement).title || undefined
     const visibleInViewport = isElementVisibleInViewport(element)
-
     return {
       u: url,
       w: width ? Math.round(width) : undefined,

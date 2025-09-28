@@ -31,11 +31,9 @@ export enum MessageAction {
   GET_SESSION_DATA = 'getSessionData',
 }
 
-export interface ExtractImagesRequest {
+export type RequestMessage = {
   action: MessageAction.EXTRACT_IMAGES
-}
-
-export interface GetSessionDataRequest {
+} | {
   action: MessageAction.GET_SESSION_DATA
   sessionId: string
 }

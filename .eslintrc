@@ -7,7 +7,7 @@
     "warnOnUnsupportedTypeScriptVersion": false
   },
   "extends": [
-    "plugin:@typescript-eslint/recommended-type-checked"
+    "plugin:@typescript-eslint/strict-type-checked"
   ],
   "plugins": [
     "@typescript-eslint",
@@ -39,6 +39,8 @@
     "no-console": "off",
     "no-unsanitized/method": "error",
     "no-unsanitized/property": "error",
-    "@typescript-eslint/no-misused-promises": ["error", { "checksVoidReturn": false }]
+    "@typescript-eslint/no-misused-promises": ["error", { "checksVoidReturn": false }],
+    "@typescript-eslint/restrict-template-expressions": "off",
+    "@typescript-eslint/use-unknown-in-catch-callback-variable": "off"
   }
 }

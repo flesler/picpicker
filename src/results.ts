@@ -1,4 +1,4 @@
-import type { GetSessionDataRequest, GetSessionDataResponse } from './types.js'
+import type { GetSessionDataResponse, RequestMessage } from './types.js'
 import { type ExtractedImage, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
 import { addEvent, generateId, getRequiredElement, hideElement, logger, querySelector, querySelectorAll, showElement, TIMEOUTS, toggleElement } from './utils.js'
 
@@ -43,7 +43,7 @@ async function initializePage() {
   if (sessionId) {
     try {
       // Request session data from background script
-      const response = await browser.runtime.sendMessage<GetSessionDataRequest, GetSessionDataResponse>({
+      const response = await browser.runtime.sendMessage<RequestMessage, GetSessionDataResponse>({
         action: MessageAction.GET_SESSION_DATA,
         sessionId: sessionId,
       })
@@ -97,14 +97,12 @@ async function initializePage() {
 
 function restoreGridSize() {
   // Use saved size or default to medium
-  const savedSize = displaySettings.thumbnailSize || 'medium'
-  setGridSize(savedSize)
+  setGridSize(displaySettings.thumbnailSize)
 }
 
 function restoreSaveAsPreference() {
   const checkbox = getRequiredElement<HTMLInputElement>('saveAsCheckbox')
-  const saveAsDialog = displaySettings.saveAsDialog ?? DISPLAY_SETTINGS.saveAsDialog
-  checkbox.checked = saveAsDialog
+  checkbox.checked = displaySettings.saveAsDialog
 }
 
 function convertToDisplayData(image: ExtractedImage): ImageDisplayData {
@@ -471,7 +469,7 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
   item.appendChild(imageInfo)
 
   // Unified click handling with double-click detection
-  const checkboxEl = item.querySelector('.image-checkbox') as HTMLInputElement
+  const checkboxEl = item.querySelector<HTMLInputElement>('.image-checkbox')
   let clickTimeout: ReturnType<typeof setTimeout> | null = null
 
   item.addEventListener('click', (e) => {
@@ -598,10 +596,11 @@ function updateSelectionUI() {
   // Update visual selection state for ALL items
   querySelectorAll('.image-item').forEach(item => {
     const imageId = item.getAttribute('data-image-id')
-    const checkbox = item.querySelector('.image-checkbox') as HTMLInputElement
     if (imageId) {
       const isSelected = selectedImages.has(imageId)
       item.classList.toggle('selected', isSelected)
+
+      const checkbox = item.querySelector<HTMLInputElement>('.image-checkbox')
       if (checkbox) checkbox.checked = isSelected
     }
   })
@@ -868,11 +867,7 @@ function calculateGridColumns(): number {
 }
 
 function toggleCurrentImage() {
-  if (filteredImages.length === 0) return
-
   const currentImage = filteredImages[currentImageIndex]
-  if (!currentImage) return
-
   toggleImageSelection(currentImage, currentImageIndex)
 }
 
@@ -927,7 +922,7 @@ function updateDownloadedUI() {
 
         // Update visual state
         item.classList.remove('selected')
-        const checkbox = item.querySelector('.image-checkbox') as HTMLInputElement
+        const checkbox = item.querySelector<HTMLInputElement>('.image-checkbox')
         if (checkbox && !checkbox.classList.contains('downloaded')) {
           checkbox.classList.add('downloaded')
           checkbox.checked = true
@@ -970,11 +965,7 @@ function scrollCurrentImageIntoView() {
 }
 
 function handleEnterDownload() {
-  if (filteredImages.length === 0) return
-
   const currentImage = filteredImages[currentImageIndex]
-  if (!currentImage) return
-
   const isCurrentSelected = selectedImages.has(currentImage.id)
 
   if (isCurrentSelected) {

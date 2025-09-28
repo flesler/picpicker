@@ -6,7 +6,7 @@ if (env.POLYFILL && typeof browser === 'undefined') {
   importScripts(env.POLYFILL)
 }
 
-import type { ExtractedImage, ExtractImagesRequest, GetSessionDataRequest, PageInfo } from './types.js'
+import type { ExtractedImage, PageInfo, RequestMessage } from './types.js'
 import { MessageAction } from './types.js'
 import { logger } from './utils.js'
 
@@ -57,7 +57,7 @@ async function extractImagesFromTab(tabId: number) {
 
     // Send extraction request to content script
     const response = await browser.tabs.sendMessage<
-      ExtractImagesRequest, { success: boolean; error?: string; images?: ExtractedImage[] }>(
+      RequestMessage, { success: boolean; error?: string; images?: ExtractedImage[] }>(
         tabId, { action: MessageAction.EXTRACT_IMAGES },
       )
 
@@ -117,10 +117,9 @@ async function createResultsTab(images: ExtractedImage[], pageInfo: PageInfo) {
 }
 
 browser.runtime.onMessage.addListener((request: unknown, sender: unknown, sendResponse: (response?: { success: boolean; error?: string; images?: ExtractedImage[]; pageInfo?: PageInfo }) => void): true => {
-  const typedRequest = request as GetSessionDataRequest
+  const typedRequest = request as RequestMessage
   if (typedRequest.action === MessageAction.GET_SESSION_DATA) {
     const sessionData = pendingSessions.get(typedRequest.sessionId)
-
     if (sessionData) {
       sendResponse({
         success: true,
