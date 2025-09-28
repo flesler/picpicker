@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v2.3.1](https://github.com/flesler/picpicker/compare/v2.3.0...v2.3.1)
+
+- Use the srcset library to better parse srcset attributes [`972d67c`](https://github.com/flesler/picpicker/commit/972d67cb13224a592fd5ef3824192c750072a976)
+
 #### [v2.3.0](https://github.com/flesler/picpicker/compare/v2.2.0...v2.3.0)
 
 - General QoL improvements, reduce DOM creation code and add some DOM helpers [`fbfe0e8`](https://github.com/flesler/picpicker/commit/fbfe0e8daaaa197950942a15e9529498ebb82483)
