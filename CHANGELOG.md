@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v2.3.3](https://github.com/flesler/picpicker/compare/v2.3.2...v2.3.3)
+
+- Ignore many false positives from no longer enforcing image extensions [`84964bf`](https://github.com/flesler/picpicker/commit/84964bfcd9438e95542887872e7931bc6cd6fe99)
+
 #### [v2.3.2](https://github.com/flesler/picpicker/compare/v2.3.1...v2.3.2)
 
 - Simpler and more reliable path/URL normalization function [`bc31a3f`](https://github.com/flesler/picpicker/commit/bc31a3fbed7692d06f6a94b18516f22a3a8b16f6)
