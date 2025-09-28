@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v2.3.2](https://github.com/flesler/picpicker/compare/v2.3.1...v2.3.2)
+
+- Simpler and more reliable path/URL normalization function [`bc31a3f`](https://github.com/flesler/picpicker/commit/bc31a3fbed7692d06f6a94b18516f22a3a8b16f6)
+
 #### [v2.3.1](https://github.com/flesler/picpicker/compare/v2.3.0...v2.3.1)
 
 - Use the srcset library to better parse srcset attributes [`972d67c`](https://github.com/flesler/picpicker/commit/972d67cb13224a592fd5ef3824192c750072a976)
