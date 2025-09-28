@@ -1,4 +1,4 @@
-import type { GetSessionDataResponse, RequestMessage } from './types.js'
+import type { GetSessionDataResponse, ImageSourceType, RequestMessage } from './types.js'
 import { type ExtractedImage, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
 import { addEvent, generateId, getRequiredElement, hideElement, logger, querySelector, querySelectorAll, showElement, TIMEOUTS, toggleElement } from './utils.js'
 
@@ -701,14 +701,16 @@ function closeLightbox() {
   getRequiredElement('lightbox').classList.remove('active')
 }
 
-function getSourceLabel(source?: string): string {
+function getSourceLabel(source?: ImageSourceType): string {
   switch (source) {
-  case 'img': return 'IMG Tag'
-  case 'bg': return 'Background Image'
-  case 'svg': return 'SVG Element'
-  case 'video': return 'Video Poster'
-  case 'canvas': return 'Canvas Element'
-  default: return 'Unknown'
+    case 'img': return 'IMG Element'
+    case 'bg': return 'Background Image'
+    case 'svg': return 'SVG Element'
+    case 'video': return 'Video'
+    case 'canvas': return 'Canvas Element'
+    case 'data': return 'Data Attribute'
+    case 'source': return 'Source Element'
+    default: return 'Unknown'
   }
 }
 

@@ -9,6 +9,7 @@ const EXTRACTION_SETTINGS = {
   minHeight: 33,
   maxFileSize: 50 * 1024 * 1024, // 50MB
   minDataUrlSize: 50,
+  includeVideoFrames: <boolean>true,
   includeCanvas: <boolean>false,
   maxImagesPerPage: 1000,
   extractionTimeout: 10000,
@@ -174,10 +175,20 @@ function performExtraction(): ExtractedImage[] {
         addImageIfValid(url, element, 'data')
       }
 
-      // Extract from VIDEO poster
+      // Extract from VIDEO poster and current frame
       if (tagName === 'VIDEO') {
         const video = element as HTMLVideoElement
+
+        // Extract poster image if available
         addImageIfValid(video.poster, video, 'video')
+
+        // Extract current frame as data URL if enabled
+        if (EXTRACTION_SETTINGS.includeVideoFrames) {
+          const frameUrl = extractCurrentFrameFromVideo(video)
+          if (frameUrl) {
+            addImageIfValid(frameUrl, video, 'video')
+          }
+        }
       }
 
       // Extract from SVG
@@ -322,6 +333,26 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
 }
 
 // Parse srcset attribute to extract all image URLs using proper srcset library
+function extractCurrentFrameFromVideo(video: HTMLVideoElement): string | null {
+  if (video.videoWidth === 0 || video.videoHeight === 0) return null // Not loaded/playing
+
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  try {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/png') // Returns base64 data URL
+  } catch (err) {
+    // Cross-origin taint or other error—log and skip
+    logger.warn('Failed to extract video frame:', err)
+    return null
+  }
+}
+
 function extractSrcset(srcset: string): string[] {
   try {
     // Return the bigger images first (reverse order like before)
