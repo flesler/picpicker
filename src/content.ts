@@ -10,7 +10,7 @@ const EXTRACTION_SETTINGS = {
   maxFileSize: 50 * 1024 * 1024, // 50MB
   minDataUrlSize: 50,
   includeVideoFrames: <boolean>true,
-  includeCanvas: <boolean>false,
+  includeCanvas: <boolean>true,
   maxImagesPerPage: 1000,
   extractionTimeout: 10000,
   dataAttributes: ['src', 'original', 'lazy', 'background', 'bg', 'img', 'image', 'url', 'href'],
