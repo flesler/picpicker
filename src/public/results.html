@@ -600,6 +600,10 @@
     <div class="loading" id="loading">
       <div class="loading-spinner"></div>
       <p>Extracting images from page...</p>
+      <div id="errorDisplay" style="display: none; color: #ef4444;">
+        <h3>Error</h3>
+        <p id="errorMessage"></p>
+      </div>
     </div>
 
     <div class="image-grid" id="imageGrid">
@@ -618,7 +622,29 @@
       <button class="lightbox-close" id="lightboxClose">×</button>
       <img id="lightboxImage" src="" alt="">
       <div class="lightbox-info">
-        <div id="lightboxMetadata"></div>
+        <div id="lightboxMetadata">
+          <div class="metadata-row">
+            <strong>URL:</strong>
+            <a id="metadataUrl" href="#" target="_blank" rel="noopener noreferrer"
+              style="word-break: break-all; color: #3b82f6; text-decoration: underline;"></a>
+          </div>
+          <div class="metadata-row">
+            <strong>Dimensions:</strong>
+            <span id="metadataDimensions"></span>
+          </div>
+          <div class="metadata-row">
+            <strong>Format:</strong>
+            <span id="metadataFormat"></span>
+          </div>
+          <div class="metadata-row">
+            <strong>Source:</strong>
+            <span id="metadataSource"></span>
+          </div>
+          <div class="metadata-row" id="metadataAltRow" style="display: none;">
+            <strong>Alt text:</strong>
+            <span id="metadataAltText"></span>
+          </div>
+        </div>
         <div class="lightbox-actions">
           <button id="downloadCurrent">Download</button>
           <button id="copyUrl">Copy URL</button>

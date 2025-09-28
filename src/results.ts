@@ -1,6 +1,6 @@
 import type { GetSessionDataRequest, GetSessionDataResponse } from './types.js'
 import { type ExtractedImage, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
-import { addEvent, generateId, getElement, getRequiredElement, logger, querySelector, querySelectorAll, TIMEOUTS } from './utils.js'
+import { addEvent, generateId, getRequiredElement, hideElement, logger, querySelector, querySelectorAll, showElement, TIMEOUTS, toggleElement } from './utils.js'
 
 // Display settings constants - no longer customizable via UI
 const DISPLAY_SETTINGS = {
@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await initializePage()
     setupEventListeners()
-  } catch (error) {
-    logger.error('Failed to initialize results page', error)
+  } catch (err) {
+    logger.error('Failed to initialize results page', err)
     showError('Failed to load images. Please try again.')
   }
 })
@@ -63,8 +63,8 @@ async function initializePage() {
       } else {
         throw new Error(response.error || 'Failed to load session data')
       }
-    } catch (error) {
-      logger.error('Failed to load session data', error)
+    } catch (err) {
+      logger.error('Failed to load session data', err)
       throw new Error('Failed to load images from session')
     }
   } else {
@@ -80,27 +80,19 @@ async function initializePage() {
     if (typeof result.totalDownloadCount === 'number') {
       totalDownloadCount = result.totalDownloadCount
     }
-  } catch (error) {
-    logger.warn('Failed to load settings', error)
+  } catch (err) {
+    logger.warn('Failed to load settings', err)
   }
 
-  // Update download counter display
   updateDownloadCounter()
-
-  // Update page info
   updatePageInfo()
-
-  // Apply initial filters and render
   applyFilters()
   renderImages()
-
-  // Restore saved grid size and saveAs preference
   restoreGridSize()
   restoreSaveAsPreference()
 
   // Hide loading
-  const loading = getElement('loading')
-  if (loading) loading.style.display = 'none'
+  hideElement('loading')
 }
 
 function restoreGridSize() {
@@ -125,21 +117,17 @@ function convertToDisplayData(image: ExtractedImage): ImageDisplayData {
 function updatePageInfo() {
   if (!currentPageInfo) return
 
-  const pageLink = getElement<HTMLAnchorElement>('pageLink')
-  if (pageLink) {
-    pageLink.href = pageLink.title = currentPageInfo.url
-    pageLink.textContent = currentPageInfo.title
-  }
+  const pageLink = getRequiredElement<HTMLAnchorElement>('pageLink')
+  pageLink.href = pageLink.title = currentPageInfo.url
+  pageLink.textContent = currentPageInfo.title
 }
 
 function setupEventListeners() {
-  // Filter controls
   addEvent('formatFilter', 'change', applyFilters)
   addEvent('sizeFilter', 'change', applyFilters)
   addEvent('sourceFilter', 'change', applyFilters)
   addEvent('visibilityFilter', 'change', applyFilters)
 
-  // View controls
   querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const target = e.target as HTMLElement
@@ -148,18 +136,15 @@ function setupEventListeners() {
     })
   })
 
-  // Save As checkbox
   addEvent('saveAsCheckbox', 'change', (e) => {
     const target = e.target as HTMLInputElement
     setSaveAsPreference(target.checked)
   })
 
-  // Bulk actions
   addEvent('selectAll', 'click', selectAllImages)
   addEvent('selectNone', 'click', clearSelection)
   addEvent('downloadSelected', 'click', downloadSelectedImages)
 
-  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'a') {
       e.preventDefault()
@@ -235,8 +220,7 @@ function populateAllFilters() {
 }
 
 function populateFormatFilter() {
-  const formatFilter = getElement<HTMLSelectElement>('formatFilter')
-  if (!formatFilter) return
+  const formatFilter = getRequiredElement<HTMLSelectElement>('formatFilter')
 
   // Count images by format
   const formatCounts = new Map<string, number>()
@@ -258,8 +242,7 @@ function populateFormatFilter() {
 }
 
 function populateSizeFilter() {
-  const sizeFilter = getElement<HTMLSelectElement>('sizeFilter')
-  if (!sizeFilter) return
+  const sizeFilter = getRequiredElement<HTMLSelectElement>('sizeFilter')
 
   // Count images by size category
   let smallCount = 0
@@ -295,8 +278,7 @@ function populateSizeFilter() {
 }
 
 function populateSourceFilter() {
-  const sourceFilter = getElement<HTMLSelectElement>('sourceFilter')
-  if (!sourceFilter) return
+  const sourceFilter = getRequiredElement<HTMLSelectElement>('sourceFilter')
 
   // Count images by source type
   const sourceCounts = new Map<string, number>()
@@ -327,8 +309,7 @@ function populateSourceFilter() {
 }
 
 function populateVisibilityFilter() {
-  const visibilityFilter = getElement<HTMLSelectElement>('visibilityFilter')
-  if (!visibilityFilter) return
+  const visibilityFilter = getRequiredElement<HTMLSelectElement>('visibilityFilter')
 
   // Count images by visibility
   let visibleCount = 0
@@ -403,34 +384,24 @@ function applyFilters() {
 
     return true
   })
-
-  updateImageCount()
-
   // Reset current image index when filters change
   currentImageIndex = 0
 
   renderImages()
 }
 
-function updateImageCount() {
-  // Image count is now handled by the filter status in the UI controls
-  // No need to update page info since we removed the count display
-}
-
 function renderImages() {
-  const grid = getElement('imageGrid')
-  const noImages = getElement('noImages')
-
-  if (!grid || !noImages) return
+  const grid = getRequiredElement('imageGrid')
+  const noImages = getRequiredElement('noImages')
 
   if (filteredImages.length === 0) {
-    grid.style.display = 'none'
-    noImages.style.display = 'block'
+    hideElement(grid)
+    showElement(noImages)
     return
   }
 
-  grid.style.display = 'grid'
-  noImages.style.display = 'none'
+  grid.style.display = 'grid' // Must be 'grid' for CSS Grid layout
+  hideElement(noImages)
 
   grid.textContent = ''
 
@@ -605,26 +576,19 @@ function handleImageSelection(imageId: string, currentIndex: number, isShiftClic
 // Update only selection count and bulk actions (no checkbox changes)
 function updateSelectionCount() {
   const selectedCount = selectedImages.size
-  const shortcutsContent = getElement('shortcutsContent')
-  const bulkActionsContent = getElement('bulkActionsContent')
-  const selectedCountElement = getElement('selectedCount')
-  const downloadButton = getElement<HTMLButtonElement>('downloadSelected')
+  const shortcutsContent = getRequiredElement('shortcutsContent')
+  const bulkActionsContent = getRequiredElement('bulkActionsContent')
+  const selectedCountElement = getRequiredElement('selectedCount')
+  const downloadButton = getRequiredElement<HTMLButtonElement>('downloadSelected')
 
   const hasSelection = selectedCount > 0
 
   // Toggle content within the same container
-  if (shortcutsContent && bulkActionsContent) {
-    shortcutsContent.style.display = hasSelection ? 'none' : 'block'
-    bulkActionsContent.style.display = hasSelection ? 'block' : 'none'
-  }
+  toggleElement(shortcutsContent, !hasSelection)
+  toggleElement(bulkActionsContent, hasSelection)
 
-  if (selectedCountElement) {
-    selectedCountElement.textContent = selectedCount.toString()
-  }
-
-  if (downloadButton) {
-    downloadButton.disabled = selectedCount === 0
-  }
+  selectedCountElement.textContent = selectedCount.toString()
+  downloadButton.disabled = selectedCount === 0
 }
 
 function updateSelectionUI() {
@@ -660,8 +624,7 @@ function clearSelection() {
 }
 
 function setGridSize(size: 'small' | 'medium' | 'large') {
-  const grid = getElement('imageGrid')
-  if (!grid) return
+  const grid = getRequiredElement('imageGrid')
 
   // Update button states
   querySelectorAll('.view-btn').forEach(btn => {
@@ -683,68 +646,23 @@ function setSaveAsPreference(saveAsDialog: boolean) {
 }
 
 function openLightbox(image: ImageDisplayData) {
-  const lightbox = getElement('lightbox')
-  const lightboxImage = getElement<HTMLImageElement>('lightboxImage')
-  const metadata = getElement('lightboxMetadata')
-
-  if (!lightbox || !lightboxImage || !metadata) return
+  const lightbox = getRequiredElement('lightbox')
+  const lightboxImage = getRequiredElement<HTMLImageElement>('lightboxImage')
 
   lightboxImage.src = image.u
   lightboxImage.alt = image.a || ''
 
-  metadata.textContent = ''
+  // Update metadata using existing HTML structure
+  const urlLink = getRequiredElement<HTMLAnchorElement>('metadataUrl')
+  urlLink.href = urlLink.textContent = image.u
+  getRequiredElement('metadataDimensions').textContent = `${image.w || '?'} × ${image.h || '?'}`
+  getRequiredElement('metadataFormat').textContent = (image.f || 'unknown').toUpperCase()
+  getRequiredElement('metadataSource').textContent = getSourceLabel(image.s)
 
-  // URL row
-  const urlDiv = document.createElement('div')
-  const urlLabel = document.createElement('strong')
-  urlLabel.textContent = 'URL: '
-  const urlLink = document.createElement('a')
-  urlLink.href = image.u
-  urlLink.target = '_blank'
-  urlLink.rel = 'noopener noreferrer'
-  urlLink.style.wordBreak = 'break-all'
-  urlLink.style.color = '#3b82f6'
-  urlLink.style.textDecoration = 'underline'
-  urlLink.textContent = image.u
-  urlDiv.appendChild(urlLabel)
-  urlDiv.appendChild(urlLink)
-
-  // Dimensions row
-  const dimensionsDiv = document.createElement('div')
-  const dimensionsLabel = document.createElement('strong')
-  dimensionsLabel.textContent = 'Dimensions: '
-  dimensionsDiv.appendChild(dimensionsLabel)
-  dimensionsDiv.appendChild(document.createTextNode(`${image.w || '?'} × ${image.h || '?'}`))
-
-  // Format row
-  const formatDiv = document.createElement('div')
-  const formatLabel = document.createElement('strong')
-  formatLabel.textContent = 'Format: '
-  formatDiv.appendChild(formatLabel)
-  formatDiv.appendChild(document.createTextNode((image.f || 'unknown').toUpperCase()))
-
-  // Source row
-  const sourceDiv = document.createElement('div')
-  const sourceLabel = document.createElement('strong')
-  sourceLabel.textContent = 'Source: '
-  sourceDiv.appendChild(sourceLabel)
-  sourceDiv.appendChild(document.createTextNode(getSourceLabel(image.s)))
-
-  metadata.appendChild(urlDiv)
-  metadata.appendChild(dimensionsDiv)
-  metadata.appendChild(formatDiv)
-  metadata.appendChild(sourceDiv)
-
-  // Alt text row (optional)
   if (image.a) {
-    const altDiv = document.createElement('div')
-    const altLabel = document.createElement('strong')
-    altLabel.textContent = 'Alt text: '
-    altDiv.appendChild(altLabel)
-    altDiv.appendChild(document.createTextNode(image.a))
-    metadata.appendChild(altDiv)
+    getRequiredElement('metadataAltText').textContent = image.a
   }
-
+  toggleElement('metadataAltRow', !!image.a)
   lightbox.classList.add('active')
 
   // Store current image for download
@@ -752,10 +670,7 @@ function openLightbox(image: ImageDisplayData) {
 }
 
 function closeLightbox() {
-  const lightbox = getElement('lightbox')
-  if (lightbox) {
-    lightbox.classList.remove('active')
-  }
+  getRequiredElement('lightbox').classList.remove('active')
 }
 
 function getSourceLabel(source?: string): string {
@@ -772,48 +687,28 @@ function getSourceLabel(source?: string): string {
 async function downloadSelectedImages() {
   const selected = filteredImages.filter(img => selectedImages.has(img.id))
   if (selected.length === 0) return
-
-  // Filter out already downloaded images
   const toDownload = selected.filter(img => !downloadedImages.has(img.u))
-  const alreadyDownloaded = selected.length - toDownload.length
-
   if (toDownload.length === 0) {
     return
   }
-
-  // Use burst downloads instead of ZIP - actually works on CORS-restricted sites
-  const results = { success: 0, failed: 0, skipped: alreadyDownloaded }
-
+  const skipped = selected.length - toDownload.length
+  let success = 0
+  let failed = 0
   for (const image of toDownload) {
     try {
-      await browser.downloads.download({
-        url: image.u,
-        filename: generateFilename(image),
-        saveAs: displaySettings.saveAsDialog,
-      })
-      downloadedImages.add(image.u) // Track as downloaded
-      results.success++
-
-      // Increment total download count for each successful download
-      await incrementDownloadCount()
-    } catch (error) {
-      logger.warn('Failed to download image:', image.u, error)
-      results.failed++
+      await downloadImage(image)
+      success++
+    } catch (err) {
+      logger.warn('Failed to download image:', image.u, err)
+      failed++
     }
   }
-
-  logger.info(`Download results: ${results.success} success, ${results.failed} failed, ${results.skipped} skipped`)
-
-  // Update UI to show downloaded state
-  updateDownloadedUI()
+  logger.info(`Download results: ${success} success, ${failed} failed, ${skipped} skipped`)
 }
 
 async function downloadCurrentImage() {
-  const lightbox = getElement('lightbox')
-  const imageData = lightbox?.getAttribute('data-current-image')
-
-  if (imageData) {
-    const image = JSON.parse(imageData) as ImageDisplayData
+  const image = getLightboxImage()
+  if (image) {
     await downloadImage(image)
   }
 }
@@ -827,15 +722,15 @@ async function downloadImage(image: ImageDisplayData) {
       saveAs: displaySettings.saveAsDialog,
     })
     downloadedImages.add(image.u) // Track as downloaded
-    logger.info('Image downloaded', { url: image.u })
+    logger.info('Image downloaded', image.u)
 
     // Increment total download count
     await incrementDownloadCount()
 
     // Update UI to show downloaded state
     updateDownloadedUI()
-  } catch (error) {
-    logger.error('Failed to download image:', error)
+  } catch (err) {
+    logger.error('Failed to download image:', err)
   }
 }
 
@@ -851,7 +746,7 @@ function generateFilename(image: ImageDisplayData): string {
     if (hasExtension && filename.length > 0) {
       return filename
     }
-  } catch (error) {
+  } catch {
     // Invalid URL, fallback to generated name
   }
 
@@ -859,29 +754,32 @@ function generateFilename(image: ImageDisplayData): string {
   const format = image.f || 'jpg'
   const timestamp = new Date().getTime()
   const domain = currentPageInfo?.url ? new URL(currentPageInfo.url).hostname : 'webpage'
-
   return `${domain}-${timestamp}.${format}`
 }
 
-async function copyCurrentImageUrl() {
-  const lightbox = getElement('lightbox')
-  const imageData = lightbox?.getAttribute('data-current-image')
-
+function getLightboxImage(): ImageDisplayData | null {
+  const lightbox = getRequiredElement('lightbox')
+  const imageData = lightbox.getAttribute('data-current-image')
   if (imageData) {
-    const image = JSON.parse(imageData) as ImageDisplayData
+    return JSON.parse(imageData) as ImageDisplayData
+  }
+  return null
+}
+
+async function copyCurrentImageUrl() {
+  const image = getLightboxImage()
+  if (image) {
     try {
       await navigator.clipboard.writeText(image.u)
       // Show brief feedback
-      const button = getElement('copyUrl')
-      if (button) {
-        const originalText = button.textContent
-        button.textContent = 'Copied!'
-        setTimeout(() => {
-          button.textContent = originalText
-        }, TIMEOUTS.COPY_FEEDBACK)
-      }
-    } catch (error) {
-      logger.error('Failed to copy URL', error)
+      const button = getRequiredElement('copyUrl')
+      const originalText = button.textContent
+      button.textContent = 'Copied!'
+      setTimeout(() => {
+        button.textContent = originalText
+      }, TIMEOUTS.COPY_FEEDBACK)
+    } catch (err) {
+      logger.error('Failed to copy URL', err)
     }
   }
 }
@@ -938,8 +836,7 @@ function navigateVertically(direction: 1 | -1) {
 }
 
 function calculateGridColumns(): number {
-  const grid = getElement('imageGrid')
-  if (!grid) return 1
+  const grid = getRequiredElement('imageGrid')
 
   // Get the first two image items to calculate column width
   const items = grid.querySelectorAll('.image-item')
@@ -1046,21 +943,16 @@ function updateDownloadedUI() {
 
 async function incrementDownloadCount() {
   totalDownloadCount++
-
-  // Save to storage
   try {
     await browser.storage.sync.set({ totalDownloadCount })
     updateDownloadCounter()
-  } catch (error) {
-    logger.error('Failed to save download count', error)
+  } catch (err) {
+    logger.error('Failed to save download count', err)
   }
 }
 
 function updateDownloadCounter() {
-  const counterElement = getElement('totalDownloads')
-  if (counterElement) {
-    counterElement.textContent = totalDownloadCount.toString()
-  }
+  getRequiredElement('totalDownloads').textContent = totalDownloadCount.toString()
 }
 
 function scrollCurrentImageIntoView() {
@@ -1105,20 +997,6 @@ function downloadSingleImage(image: ImageDisplayData) {
 }
 
 function showError(message: string) {
-  const loading = getElement('loading')
-  if (loading) {
-    loading.textContent = ''
-    const errorDiv = document.createElement('div')
-    errorDiv.style.color = '#ef4444'
-
-    const heading = document.createElement('h3')
-    heading.textContent = 'Error'
-
-    const paragraph = document.createElement('p')
-    paragraph.textContent = message
-
-    errorDiv.appendChild(heading)
-    errorDiv.appendChild(paragraph)
-    loading.appendChild(errorDiv)
-  }
+  getRequiredElement('errorMessage').textContent = message
+  toggleElement('errorDisplay', !!message)
 }

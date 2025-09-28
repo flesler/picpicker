@@ -12,8 +12,7 @@ const EXTRACTION_SETTINGS = {
   includeAltText: true,
   includeVideoPoster: true,
   includeCanvas: false,
-  allowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'apng', 'ico', 'bmp'],
-  skipDataUrls: true,
+  allowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'apng', 'ico', 'bmp', 'tiff', 'tif', 'heic', 'heif'],
   maxImagesPerPage: 1000,
   extractionTimeout: 10000,
 } as const
@@ -59,8 +58,8 @@ function init() {
 
     logger.info(`Universal image extraction ready on ${window.location.hostname}`)
     isInitialized = true
-  } catch (error) {
-    logger.error('Initialization failed', error)
+  } catch (err) {
+    logger.error('Initialization failed', err)
     setTimeout(init, TIMEOUTS.INIT_RETRY)
   }
 }
@@ -76,9 +75,9 @@ async function extractAllImages(): Promise<ExtractedImage[]> {
       resolve(performExtraction())
     })
     return await Promise.race([extractionPromise, timeoutPromise])
-  } catch (error) {
-    logger.error('Extraction error', error)
-    throw error
+  } catch (err) {
+    logger.error('Extraction error', err)
+    throw err
   }
 }
 
@@ -170,14 +169,14 @@ function performExtraction(): ExtractedImage[] {
           const canvas = element as HTMLCanvasElement
           const dataUrl = canvas.toDataURL()
           addImageIfValid(dataUrl, canvas, 'canvas')
-        } catch (e) {
+        } catch (err) {
           // Canvas may be tainted by cross-origin content
-          logger.warn('Could not extract canvas', e)
+          logger.warn('Could not extract canvas', err)
         }
       }
-    } catch (error) {
+    } catch (err) {
       // Continue on individual element errors
-      logger.warn('Error processing element', error)
+      logger.warn('Error processing element', err)
     }
   }
 
@@ -191,11 +190,6 @@ function performExtraction(): ExtractedImage[] {
 
 function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): ExtractedImage | null {
   try {
-    // Skip data URLs if configured
-    if (EXTRACTION_SETTINGS.skipDataUrls && url.startsWith('data:')) {
-      return null
-    }
-
     // Get format from URL
     const format = getImageFormat(url)
     if (!(EXTRACTION_SETTINGS.allowedFormats as readonly string[]).includes(format)) {
@@ -293,8 +287,8 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
       s: source,
       v: visibleInViewport,
     }
-  } catch (error) {
-    logger.warn('Error creating image object', error)
+  } catch (err) {
+    logger.warn('Error creating image object', err)
     return null
   }
 }
@@ -324,7 +318,6 @@ function parseSrcset(srcset: string): string[] {
 // Extract image URLs from data-* attributes commonly used for lazy loading
 function extractDataAttributes(element: Element): string[] {
   const urls: string[] = []
-
   // Check all data-* attributes for image URLs
   if (element instanceof HTMLElement) {
     for (const value of Object.values(element.dataset)) {
@@ -337,17 +330,16 @@ function extractDataAttributes(element: Element): string[] {
   return urls
 }
 
-// Basic validation for image URLs
+// Basic validation for image URLs - used for quick filtering in data-* attributes
 function isValidImageUrl(url: string): boolean {
   if (!url || url.length < 4) return false
 
-  // Allow data URLs, relative paths, and absolute URLs
+  // Always accept data:image URLs (they're definitely images)
   if (url.startsWith('data:image/')) return true
-  if (url.startsWith('http://') || url.startsWith('https://')) return true
-  if (url.startsWith('/') || url.startsWith('./')) return true
 
-  // Check for common image extensions
-  const imageExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|svg|ico|tiff?)(\?|#|$)/i
+  // For all other URLs, check if they have valid image extensions
+  const formats = EXTRACTION_SETTINGS.allowedFormats.join('|')
+  const imageExtensions = new RegExp(`\\.(${formats})(\\?|#|$)`, 'i')
   return imageExtensions.test(url)
 }
 
@@ -400,8 +392,8 @@ function isElementVisibleInViewport(element: Element): boolean {
     }
 
     return isVisible
-  } catch (error) {
-    logger.warn('Error checking viewport visibility', error)
+  } catch (err) {
+    logger.warn('Error checking viewport visibility', err)
     return false
   }
 }

@@ -37,6 +37,19 @@ export function getRequiredElement<T extends HTMLElement>(id: string): T {
   return element
 }
 
+export function toggleElement(elem: string | HTMLElement, display: boolean) {
+  const element = typeof elem === 'string' ? getRequiredElement<HTMLElement>(elem) : elem
+  element.style.display = display ? 'block' : 'none'
+}
+
+export function showElement(elem: string | HTMLElement) {
+  toggleElement(elem, true)
+}
+
+export function hideElement(elem: string | HTMLElement) {
+  toggleElement(elem, false)
+}
+
 export function addEvent<T extends HTMLElement>(id: string, event: string, callback: (event: Event) => void): T | null {
   const elem = getElement<T>(id)
   if (elem) {
