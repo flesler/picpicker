@@ -443,7 +443,7 @@
       overflow: hidden;
     }
 
-    .lightbox img {
+    .lightbox img, .lightbox video {
       max-width: 100%;
       max-height: calc(90vh - 200px); /* Reserve space for info section */
       width: auto;
@@ -635,6 +635,7 @@
     <div class="lightbox-content">
       <button class="lightbox-close" id="lightboxClose">×</button>
       <img id="lightboxImage" src="" alt="">
+      <video id="lightboxVideo" controls style="display: none;"></video>
       <div class="lightbox-info">
         <div id="lightboxMetadata">
           <div id="lightboxBlockedWarning"

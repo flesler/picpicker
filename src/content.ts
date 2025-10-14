@@ -86,7 +86,7 @@ async function extractAllImages(): Promise<ExtractedImage[]> {
   }
 }
 
-function performExtraction(): ExtractedImage[] {
+async function performExtraction(): Promise<ExtractedImage[]> {
   const images: ExtractedImage[] = []
   // Scan all elements in the DOM
   const allElements = querySelectorAll<Element>('*')
@@ -97,6 +97,25 @@ function performExtraction(): ExtractedImage[] {
       return
     }
     const extracted = createImageObject(url, element, source)
+    if (extracted && !images.some(img => img.u === extracted.u)) {
+      images.push(extracted)
+    }
+  }
+  // Helper to add video if valid and not already seen (handles blob URLs)
+  const addVideoIfValidAsync = async (url: string | null | undefined, element: Element) => {
+    if (!url || !isValidVideoUrl(url)) {
+      return
+    }
+    // Convert blob URLs to data URLs for portability
+    if (url.startsWith('blob:')) {
+      const converted = await convertBlobToDataUrl(url)
+      if (!converted) {
+        logger.warn('Failed to convert blob URL, skipping video')
+        return // Skip if we can't convert - blob URLs don't work across pages
+      }
+      url = converted
+    }
+    const extracted = createImageObject(url, element, 'video', true)
     if (extracted && !images.some(img => img.u === extracted.u)) {
       images.push(extracted)
     }
@@ -135,13 +154,22 @@ function performExtraction(): ExtractedImage[] {
         }
       }
 
-      // Extract from SOURCE tags (picture elements)
+      // Extract from SOURCE tags (picture elements only, not video/audio)
       if (tagName === 'SOURCE') {
         const source = element as HTMLSourceElement
-        // Extract from srcset attribute in source tags
-        const srcsetUrls = extractSrcset(source.srcset)
-        for (const url of srcsetUrls) {
-          addImageIfValid(url, source, 'source')
+        const parent = source.parentElement
+        // Skip if inside video/audio - those are handled separately
+        if (parent && ['VIDEO', 'AUDIO'].includes(parent.tagName)) {
+          continue
+        }
+        // Picture sources use srcset (primary) or src (fallback)
+        if (source.srcset) {
+          const srcsetUrls = extractSrcset(source.srcset)
+          for (const url of srcsetUrls) {
+            addImageIfValid(url, source, 'source')
+          }
+        } else if (source.src) {
+          addImageIfValid(source.src, source, 'source')
         }
       }
 
@@ -175,7 +203,7 @@ function performExtraction(): ExtractedImage[] {
         addImageIfValid(url, element, 'data')
       }
 
-      // Extract from VIDEO poster and current frame
+      // Extract from VIDEO poster, current frame, and video source URLs
       if (tagName === 'VIDEO') {
         const video = element as HTMLVideoElement
 
@@ -187,6 +215,18 @@ function performExtraction(): ExtractedImage[] {
           const frameUrl = extractCurrentFrameFromVideo(video)
           if (frameUrl) {
             addImageIfValid(frameUrl, video, 'video')
+          }
+        }
+
+        // Extract video source URLs (actual downloadable videos)
+        if (video.src) {
+          await addVideoIfValidAsync(video.src, video)
+        }
+        // Check source children elements for video URLs
+        const sources = video.querySelectorAll('source')
+        for (const source of sources) {
+          if (source.src) {
+            await addVideoIfValidAsync(source.src, source)
           }
         }
       }
@@ -234,22 +274,34 @@ function normalizeUrl(url: string): string {
   }
 }
 
-function createImageObject(url: string, element: Element, source: ImageSourceType = 'img'): ExtractedImage | null {
+function createImageObject(url: string, element: Element, source: ImageSourceType = 'img', isVideo = false): ExtractedImage | null {
   try {
-    // Normalize URL to add protocol if missing
     url = normalizeUrl(url)
-    // All our extraction sources are already image-contextual, so trust them
-    const format = getImageFormat(url)
-
-    // Get dimensions based on element type and available properties
+    const format = getFormat(url)
     const rect = element.getBoundingClientRect()
     let width: number | undefined
     let height: number | undefined
 
     const w = element.getAttribute('width')
     const h = element.getAttribute('height')
-    if (source === 'img') {
-      // Get width/height attributes from any element (img, source, etc.)
+
+    if (isVideo) {
+      // Video dimensions: from VIDEO element or parent VIDEO for SOURCE
+      if (element.tagName === 'VIDEO') {
+        const video = element as HTMLVideoElement
+        width = video.videoWidth ||
+          (w ? parseInt(w, 10) : undefined) ||
+          (rect.width > 0 ? rect.width : undefined)
+        height = video.videoHeight ||
+          (h ? parseInt(h, 10) : undefined) ||
+          (rect.height > 0 ? rect.height : undefined)
+      } else if (element.tagName === 'SOURCE' && element.parentElement?.tagName === 'VIDEO') {
+        const video = element.parentElement as HTMLVideoElement
+        width = video.videoWidth || (rect.width > 0 ? rect.width : undefined)
+        height = video.videoHeight || (rect.height > 0 ? rect.height : undefined)
+      }
+    } else if (source === 'img') {
+    // Image dimensions: prioritize attributes, then natural, then computed, then rect
       const attrWidth = w ? parseInt(w, 10) : undefined
       const attrHeight = h ? parseInt(h, 10) : undefined
       // Get computed styles for CSS-defined dimensions
@@ -283,8 +335,8 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
           (rect.height > 0 ? rect.height : undefined)
       }
     } else if (source === 'video') {
+      // Video poster dimensions
       const video = element as HTMLVideoElement
-      // For video posters, use element dimensions (video size)
       width = video.videoWidth ||
         (w ? parseInt(w, 10) : undefined) ||
         (rect.width > 0 ? rect.width : undefined)
@@ -292,7 +344,7 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
         (h ? parseInt(h, 10) : undefined) ||
         (rect.height > 0 ? rect.height : undefined)
     } else {
-      // For other sources (svg, canvas, bg), use computed styles + element dimensions
+      // Other sources (svg, canvas, bg): computed styles + element dimensions
       const computed = window.getComputedStyle(element)
 
       // Try computed styles first (handles CSS-defined dimensions)
@@ -316,7 +368,9 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
     if (height && height < EXTRACTION_SETTINGS.minHeight) return null
 
     const alt = (element as HTMLImageElement).alt || (element as HTMLElement).title || undefined
-    const visibleInViewport = isElementVisibleInViewport(element)
+    const visibleInViewport = isElementVisibleInViewport(
+      element.tagName === 'SOURCE' && element.parentElement ? element.parentElement : element,
+    )
     return {
       u: url,
       w: width ? Math.round(width) : undefined,
@@ -324,10 +378,11 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
       a: alt,
       f: format,
       s: source,
-      v: visibleInViewport,
+      v: visibleInViewport ? 1 : undefined,
+      iv: isVideo ? 1 : undefined,
     }
   } catch (err) {
-    logger.warn('Error creating image object', err)
+    logger.warn(`Error creating ${isVideo ? 'video' : 'image'} object`, err)
     return null
   }
 }
@@ -401,15 +456,52 @@ function extractUrlFromCss(cssValue: string): string | null {
   return urlMatch ? urlMatch[1] : null
 }
 
-function getImageFormat(url: string): string {
-  if (url.startsWith('data:image/')) {
-    const match = url.match(/data:image\/([^;]+)/)
+function getFormat(url: string): string {
+  if (url.startsWith('data:')) {
+    const match = url.match(/data:(?:image|video)\/([^;]+)/)
     return match ? match[1] : 'unknown'
   }
 
-  const urlPath = url.split('?')[0].split('#')[0] // Remove query params and hash fragments
-  const match = urlPath.match(/\.([a-zA-Z]+)$/)
+  // Remove query params and hash fragments
+  const urlPath = url.split('?')[0].split('#')[0]
+  const match = urlPath.match(/\.([a-zA-Z0-9]+)$/)
   return match ? match[1].toLowerCase() : 'unknown'
+}
+
+function isValidVideoUrl(url: string): boolean {
+  if (!url || url.length < 4) return false
+  // Allow blob URLs (will be converted to data URLs)
+  if (url.startsWith('blob:')) return true
+  url = normalizeUrl(url)
+  if (!/^https?:\/\/[^\/]+\/.+/.test(url)) {
+    return false
+  }
+  return true
+}
+
+async function convertBlobToDataUrl(blobUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(blobUrl)
+    if (!response.ok) return null
+
+    const blob = await response.blob()
+    // Check size limit
+    if (blob.size > EXTRACTION_SETTINGS.maxFileSize) {
+      logger.warn(`Blob too large (${blob.size} bytes), skipping`)
+      return null
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => { resolve(reader.result as string) }
+      reader.onerror = () => { resolve(null) }
+      reader.readAsDataURL(blob)
+    })
+  } catch (err) {
+    // Blob URLs often fail because they're streaming segments (MSE), iframe-isolated, or DRM-protected
+    logger.warn('Cannot fetch blob URL (likely streaming/protected content)', err)
+    return null
+  }
 }
 
 function isElementVisibleInViewport(element: Element): boolean {

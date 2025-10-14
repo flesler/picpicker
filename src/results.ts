@@ -456,19 +456,33 @@ function createImageItem(image: ImageDisplayData): HTMLElement {
     checkbox.checked = true
   }
 
-  const img = document.createElement('img')
-  // Only set src for non-blocked images to prevent CORS errors
-  if (!isBlocked) {
-    img.src = image.u
+  if (image.iv) {
+    const video = document.createElement('video')
+    video.src = image.u
+    video.controls = true
+    video.preload = 'metadata'
+    video.style.width = '100%'
+    video.style.height = '100%'
+    video.style.objectFit = 'cover'
+    if (altText) {
+      video.title = altText
+    }
+    imageContainer.appendChild(checkbox)
+    imageContainer.appendChild(video)
+  } else {
+    const img = document.createElement('img')
+    // Only set src for non-blocked images to prevent CORS errors
+    if (!isBlocked) {
+      img.src = image.u
+    }
+    img.alt = altText
+    img.loading = 'lazy'
+    if (altText) {
+      img.title = altText
+    }
+    imageContainer.appendChild(checkbox)
+    imageContainer.appendChild(img)
   }
-  img.alt = altText
-  img.loading = 'lazy'
-  if (altText) {
-    img.title = altText
-  }
-
-  imageContainer.appendChild(checkbox)
-  imageContainer.appendChild(img)
 
   // Create image info
   const imageInfo = document.createElement('div')
@@ -667,14 +681,24 @@ function setSaveAsPreference(saveAsDialog: boolean) {
 function openLightbox(image: ImageDisplayData) {
   const lightbox = getRequiredElement('lightbox')
   const lightboxImage = getRequiredElement<HTMLImageElement>('lightboxImage')
+  const lightboxVideo = getRequiredElement<HTMLVideoElement>('lightboxVideo')
 
-  // Only set src for non-blocked images to prevent CORS errors
-  if (!isBlockedDomain(image.u)) {
-    lightboxImage.src = image.u
+  if (image.iv) {
+    hideElement(lightboxImage)
+    showElement(lightboxVideo)
+    lightboxVideo.src = image.u
+    lightboxVideo.load()
   } else {
-    lightboxImage.removeAttribute('src')
+    hideElement(lightboxVideo)
+    showElement(lightboxImage)
+    // Only set src for non-blocked images to prevent CORS errors
+    if (!isBlockedDomain(image.u)) {
+      lightboxImage.src = image.u
+    } else {
+      lightboxImage.removeAttribute('src')
+    }
+    lightboxImage.alt = image.a || ''
   }
-  lightboxImage.alt = image.a || ''
 
   // Update metadata using existing HTML structure
   const urlLink = getRequiredElement<HTMLAnchorElement>('metadataUrl')
@@ -688,8 +712,8 @@ function openLightbox(image: ImageDisplayData) {
   }
   toggleElement('metadataAltRow', !!image.a)
 
-  // Show/hide blocked domain warning for this specific image
-  toggleElement('lightboxBlockedWarning', isBlockedDomain(image.u))
+  // Show/hide blocked domain warning for this specific image (videos don't have CORS issues)
+  toggleElement('lightboxBlockedWarning', !image.iv && isBlockedDomain(image.u))
 
   lightbox.classList.add('active')
 

@@ -10,8 +10,10 @@ export interface ExtractedImage {
   h?: number             // height
   a?: string             // alt
   f?: string             // format (jpg, png, etc.)
+  // TODO: Switch to numeric enum?
   s?: ImageSourceType    // source type
-  v: boolean             // visibleInViewport
+  v?: 1                  // visibleInViewport - only set when true (1)
+  iv?: 1                 // isVideo - only set when true (1)
 }
 
 // Extended image data for results page display
