@@ -1,3 +1,5 @@
+
+
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/mkiilhjbheleblbeegpbpnffkinapakn?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/picpicker/mkiilhjbheleblbeegpbpnffkinapakn)
 [![Chrome Web Store Rating](https://img.shields.io/chrome-web-store/rating/mkiilhjbheleblbeegpbpnffkinapakn)](https://chromewebstore.google.com/detail/picpicker/mkiilhjbheleblbeegpbpnffkinapakn)
 [![Mozilla Add-on](https://img.shields.io/amo/v/picpicker?label=Firefox%20Add-on)](https://addons.mozilla.org/firefox/addon/picpicker/)
@@ -149,7 +151,7 @@ DOM Scanning → Session Storage → Grid Display
 ## ⚙️ Settings & Features
 
 ### Extraction Settings
-- **Optimal defaults** - 50px minimum, all source types enabled
+- **Optimal defaults** - 33px minimum, all source types enabled
 - **Source Types** - IMG tags, backgrounds, SVG, video posters
 - **Alt Text** - Enabled for search/tooltips
 - **Performance** - 1000 images max per page, 10s timeout
