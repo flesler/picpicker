@@ -149,7 +149,7 @@ DOM Scanning → Session Storage → Grid Display
 ## ⚙️ Settings & Features
 
 ### Extraction Settings
-- **Optimal defaults** - 50px minimum, all source types enabled
+- **Optimal defaults** - 33px minimum, all source types enabled
 - **Source Types** - IMG tags, backgrounds, SVG, video posters
 - **Alt Text** - Enabled for search/tooltips
 - **Performance** - 1000 images max per page, 10s timeout
