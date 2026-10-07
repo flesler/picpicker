@@ -2,7 +2,7 @@
 
 Plan for optional, on-device **text → image** search in PicPicker using Google’s **EmbeddingGemma 2**. All inference stays local; model weights are fetched only after explicit opt-in.
 
-**Status:** **Paused / archive** — experiment on branch `embeddinggemma` only (not `main`). Phase 1 text-only indexing was implemented; **WebGPU did not meet UX bar** on Linux dev hardware (see [embedding-experiment-closeout.md](./embedding-experiment-closeout.md) on `main` and [embedding-benchmarks.md](./embedding-benchmarks.md)). Vision not started.  
+**Status:** **Paused / archive** — experiment on branch `embeddinggemma` only (not `main`). Phase 1 text-only indexing was implemented; **WebGPU did not meet UX bar** on Linux dev hardware. Long-term notes: `main` → `docs/embedding-experiment-closeout.md`, `docs/embedding-benchmarks.md`. Vision not started.  
 **Benchmark log:** [embedding-benchmarks.md](./embedding-benchmarks.md) (measured wall times, adapter notes).  
 **Primary references:** [Model card](https://ai.google.dev/gemma/docs/embeddinggemma/model_card_2) · [Developer guide](https://developers.googleblog.com/embeddinggemma-2-the-developer-guide/) · [ONNX for Transformers.js](https://huggingface.co/onnx-community/embeddinggemma-2-ONNX) · [Transformers.js v4 + ORT WebGPU](https://huggingface.co/blog/transformersjs-v4)
 
