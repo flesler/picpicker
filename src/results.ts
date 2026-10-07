@@ -113,6 +113,7 @@ async function initializePage() {
   renderImages()
   restoreGridSize()
   restoreSaveAsPreference()
+  // Hide loading
   hideElement('loading')
   void initSemanticSearch()
 }

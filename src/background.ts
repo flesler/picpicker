@@ -93,7 +93,7 @@ async function extractImagesFromTab(tabId: number) {
   }
 }
 
-// In-memory cache (cleared on extension reload; optional storage backup for dev — see resultsSessionStorage.ts)
+// Store session data in memory (cleared on extension reload)
 const pendingSessions = new Map<string, ResultsSessionPayload>()
 
 async function createResultsTab(images: ExtractedImage[], pageInfo: PageInfo) {

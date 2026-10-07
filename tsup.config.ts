@@ -5,6 +5,7 @@ import { defineConfig } from 'tsup'
 
 const isFirefox = process.env.FIREFOX === '1'
 const prod = process.env.NODE_ENV === 'production'
+// Firefox doesn't need the polyfill
 const polyfill = isFirefox ? '' : 'browser-polyfill.js'
 
 function sharedPlugins() {
@@ -15,6 +16,7 @@ function sharedPlugins() {
         { from: ['node_modules/onnxruntime-web/dist/*.wasm'], to: ['./wasm'] },
         { from: ['node_modules/onnxruntime-web/dist/ort.wasm.min.mjs'], to: ['./wasm'] },
         { from: ['node_modules/onnxruntime-web/dist/ort-wasm*.mjs'], to: ['./wasm'] },
+        // Firefox doesn't need the polyfill, it's already included
         ...(polyfill ? [{ from: ['node_modules/webextension-polyfill/dist/browser-polyfill.min.js'], to: [polyfill] }] : []),
       ],
     }),
@@ -128,6 +130,7 @@ function generateManifest(isFirefox = false) {
   manifest.description = pkg.description
 
   if (isFirefox) {
+    // Firefox-specific manifest modifications
     manifest.background = {
       scripts: ['background.js'],
     }
@@ -135,13 +138,16 @@ function generateManifest(isFirefox = false) {
       gecko: {
         id: pkg.gecko_id,
         strict_min_version: '109.0',
+        // Ready for their spec
         data_collection_permissions: { required: ['none'] },
       },
     }
   } else {
+    // Chrome-specific manifest (ensure it stays as service_worker)
     manifest.background = {
       service_worker: 'background.js',
     }
+    // Remove any Firefox-specific properties
     delete manifest.browser_specific_settings
   }
   return manifest
