@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v3.0.0](https://github.com/flesler/picpicker/compare/v2.3.3...v3.0.0)
+
+- Optional semantic search on the results page (text-only EmbeddingGemma 2, opt-in model download from Hugging Face)
+- First-run disclosure before enabling semantic search; indexing runs locally in a Web Worker
+
 #### [v2.3.3](https://github.com/flesler/picpicker/compare/v2.3.2...v2.3.3)
 
 - Ignore many false positives from no longer enforcing image extensions [`84964bf`](https://github.com/flesler/picpicker/commit/84964bfcd9438e95542887872e7931bc6cd6fe99)

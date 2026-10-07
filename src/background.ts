@@ -6,6 +6,11 @@ if (env.POLYFILL && typeof browser === 'undefined') {
   importScripts(env.POLYFILL)
 }
 
+import {
+  loadPersistedResultsSession,
+  persistResultsSession,
+  type ResultsSessionPayload,
+} from './resultsSessionStorage.js'
 import type { ExtractedImage, PageInfo, RequestMessage } from './types.js'
 import { MessageAction } from './types.js'
 import { logger } from './utils.js'
@@ -88,15 +93,17 @@ async function extractImagesFromTab(tabId: number) {
   }
 }
 
-// Store session data in memory (cleared on extension reload)
-const pendingSessions = new Map<string, { images: ExtractedImage[], pageInfo: PageInfo }>()
+// In-memory cache (cleared on extension reload; optional storage backup for dev — see resultsSessionStorage.ts)
+const pendingSessions = new Map<string, ResultsSessionPayload>()
 
 async function createResultsTab(images: ExtractedImage[], pageInfo: PageInfo) {
   try {
     // Generate unique session ID for this results tab
     const sessionId = Math.random().toString(36).slice(-5)
     // Store data in memory for this session
-    pendingSessions.set(sessionId, { images, pageInfo })
+    const payload = { images, pageInfo }
+    pendingSessions.set(sessionId, payload)
+    await persistResultsSession(sessionId, payload)
 
     // Create new tab with results page, passing only session ID
     const resultsUrl = browser.runtime.getURL(`results.html?session=${sessionId}`)
@@ -119,21 +126,35 @@ async function createResultsTab(images: ExtractedImage[], pageInfo: PageInfo) {
 browser.runtime.onMessage.addListener((request: unknown, sender: unknown, sendResponse: (response?: { success: boolean; error?: string; images?: ExtractedImage[]; pageInfo?: PageInfo }) => void): true => {
   const typedRequest = request as RequestMessage
   if (typedRequest.action === MessageAction.GET_SESSION_DATA) {
-    const sessionData = pendingSessions.get(typedRequest.sessionId)
-    if (sessionData) {
-      sendResponse({
-        success: true,
-        images: sessionData.images,
-        pageInfo: sessionData.pageInfo,
-      })
-    } else {
-      sendResponse({
-        success: false,
-        error: 'Session not found or expired',
-      })
-    }
+    void resolveSessionData(typedRequest.sessionId).then((sessionData) => {
+      if (sessionData) {
+        sendResponse({
+          success: true,
+          images: sessionData.images,
+          pageInfo: sessionData.pageInfo,
+        })
+      } else {
+        sendResponse({
+          success: false,
+          error: 'Session not found or expired',
+        })
+      }
+    })
     return true
   }
 
   return true
 })
+
+async function resolveSessionData(sessionId: string): Promise<ResultsSessionPayload | null> {
+  const cached = pendingSessions.get(sessionId)
+  if (cached) {
+    return cached
+  }
+  const persisted = await loadPersistedResultsSession(sessionId)
+  if (persisted) {
+    pendingSessions.set(sessionId, persisted)
+    return persisted
+  }
+  return null
+}

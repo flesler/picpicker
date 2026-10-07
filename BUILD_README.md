@@ -17,8 +17,21 @@
 
 2. **Install dependencies**
    ```bash
-   npm install
+   npm install --ignore-scripts
    ```
+   (`@huggingface/transformers` pulls an optional native ONNX runtime postinstall that is not needed for the browser build.)
+
+### Dev: keep results sessions across extension reload
+
+Dev builds default to persisting the last few `results.html?session=…` payloads in `storage.local` so you can **`reload_extension` + reload the results tab** without re-running PicPicker.
+
+Toggle in the service worker console:
+
+```js
+chrome.storage.local.set({ picpickerPersistResultsSessions: true })  // or false
+```
+
+Production builds default this off unless you set the flag to `true`.
 
 ## Build Process
 

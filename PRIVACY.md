@@ -15,11 +15,18 @@ PicPicker uses Chrome's **"activeTab"** permission model, which means:
 - ✅ **No persistent website access** - Permissions granted only during extraction
 - ✅ **Cannot monitor browsing** - No access to tabs you're not actively using
 
-### Zero External Communication
+### Zero External Communication (default)
 - 🚫 **No servers** - We don't operate any backend infrastructure
 - 🚫 **No analytics** - Zero tracking, usage data, or telemetry
-- 🚫 **No external APIs** - All processing happens locally in your browser
-- 🚫 **No network requests** - Extension never communicates with external services
+- 🚫 **No external APIs** - Core extraction needs no third-party services
+- 🚫 **No network requests by default** - Image extraction does not contact external services
+
+### Optional semantic search (opt-in)
+If you enable **semantic search** on the results page:
+- Your browser downloads the open **EmbeddingGemma 2** model files from **Hugging Face** (one-time cache)
+- Search queries and indexed text (alt text, filenames, URL hints) are processed **locally** in your browser
+- PicPicker does not receive your queries or send them to our servers
+- You can leave this feature disabled and use PicPicker exactly as before
 
 ## Data Collection and Storage
 

@@ -15,7 +15,7 @@ A powerful browser extension that extracts **all images** from any webpage with 
 👁️ **Viewport Detection** - Shows which images were visible when extracted  
 🎯 **Advanced Selection** - Shift+Click ranges, Ctrl+Click toggle, select all/none  
 ⚡ **Burst Downloads** - Download multiple selected images simultaneously  
-🔍 **Text Search** - Search alt text when enabled  
+🔍 **Semantic Search** - Optional on-device search by meaning (alt text, filenames, URLs; EmbeddingGemma 2)  
 ⚙️ **Customizable** - Filter by size, format, source type, visibility  
 🎨 **Modern UI** - Responsive grid, lightbox preview, hover tooltips  
 
@@ -25,7 +25,7 @@ A powerful browser extension that extracts **all images** from any webpage with 
 🚫 **No Background Monitoring** - Cannot read websites unless you click the extension  
 📱 **Local Processing** - All image data stays in your browser  
 🔐 **No Data Collection** - No analytics, tracking, or external servers  
-⚡ **Instant Access** - No account required, works offline
+⚡ **Instant Access** - No account required; works offline except optional AI model download
 
 ## 📸 Screenshots
 

@@ -505,6 +505,124 @@
       gap: 0.5rem;
     }
 
+    .semantic-search-row {
+      width: 100%;
+      padding-bottom: 1rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .semantic-search-main {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .semantic-search-main label {
+      font-size: 0.875rem;
+      color: #475569;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .semantic-search-main input[type="search"] {
+      flex: 1 1 16rem;
+      min-width: 12rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+    }
+
+    .semantic-search-main input[type="search"]:disabled {
+      background: #f1f5f9;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .semantic-enable-btn {
+      font-size: 0.875rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .semantic-gpu-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: #475569;
+      margin: 0 0 1rem;
+      cursor: pointer;
+    }
+
+    .semantic-gpu-option input {
+      margin-top: 0.2rem;
+    }
+
+    .semantic-status {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+      min-height: 1.125rem;
+      font-variant-numeric: tabular-nums;
+      white-space: pre;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: white;
+      border-radius: 0.75rem;
+      max-width: 28rem;
+      width: 100%;
+      padding: 1.5rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-card h2 {
+      font-size: 1.125rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .modal-card p {
+      font-size: 0.875rem;
+      color: #475569;
+      margin-bottom: 0.75rem;
+    }
+
+    .modal-card ul {
+      font-size: 0.875rem;
+      color: #475569;
+      margin: 0 0 1rem 1.25rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .modal-actions .secondary {
+      background: #f1f5f9;
+      border-color: #e2e8f0;
+    }
+
     @media (max-width: 768px) {
       .controls {
         justify-content: center;
@@ -536,6 +654,16 @@
             <span id="totalDownloads">0</span>
             <span>downloads</span>
         </div>
+      </div>
+
+      <div class="semantic-search-row" id="semanticSearchGroup">
+        <div class="semantic-search-main">
+          <label for="semanticSearchInput">Semantic search</label>
+          <input type="search" id="semanticSearchInput" placeholder="Search alt text & filenames (not pixels yet)…"
+            autocomplete="off" autocomplete="off">
+          <button type="button" class="semantic-enable-btn" id="semanticSearchEnableBtn">Enable semantic search</button>
+        </div>
+        <div class="semantic-status" id="semanticSearchStatus" aria-live="polite"></div>
       </div>
 
       <div class="controls">
@@ -672,6 +800,29 @@
           <button id="downloadCurrent">Download</button>
           <button id="copyUrl">Copy URL</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="semanticSearchModal" role="dialog" aria-modal="true"
+    aria-labelledby="semanticModalTitle">
+    <div class="modal-card">
+      <h2 id="semanticModalTitle">Enable semantic search?</h2>
+      <p>Search extracted images by meaning using alt text, filenames, and URL hints—not just exact text matches.</p>
+      <ul>
+        <li><strong>One-time download</strong> (~170&nbsp;MB, EmbeddingGemma&nbsp;2 text model from Hugging Face)</li>
+        <li>Runs <strong>on your device</strong>; PicPicker does not receive your queries</li>
+        <li>Uses <strong>WebGPU</strong> when available, otherwise CPU (WebAssembly)—not CUDA, so <code>nvidia-smi</code>
+          may show nothing</li>
+        <li>Works best when images have alt text; visual search comes in a later update</li>
+      </ul>
+      <label class="semantic-gpu-option">
+        <input type="checkbox" id="semanticRequireGpu">
+        Prefer GPU (WebGPU) when available — falls back to CPU if the extension cannot use WebGPU
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="semanticModalCancel">Not now</button>
+        <button type="button" class="extract-btn" id="semanticModalConfirm">Enable</button>
       </div>
     </div>
   </div>

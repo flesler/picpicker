@@ -1,5 +1,8 @@
+import { SemanticSearchClient, type SemanticSearchProgress } from './semanticSearch/client.js'
+import { compareSemanticRank } from './semanticSearch/ranking.js'
+import { loadSemanticSearchSettings, saveSemanticSearchSettings } from './semanticSearch/settings.js'
 import type { GetSessionDataResponse, ImageSourceType, RequestMessage } from './types.js'
-import { type ExtractedImage, type ImageDisplayData, type PageInfo, MessageAction } from './types.js'
+import { MessageAction, type ExtractedImage, type ImageDisplayData, type PageInfo } from './types.js'
 import { addEvent, generateId, getRequiredElement, hideElement, logger, querySelector, querySelectorAll, showElement, TIMEOUTS, toggleElement } from './utils.js'
 
 // Domains that block CORS/CORP - mark images as failed to avoid user flagging
@@ -28,14 +31,21 @@ let currentImageIndex = 0 // For keyboard navigation focus
 let currentPageInfo: PageInfo | null = null
 let displaySettings = DISPLAY_SETTINGS
 let totalDownloadCount = 0 // Historical count of all downloads ever
+let semanticSearchClient: SemanticSearchClient | null = null
+let semanticSearchEnabled = false
+let semanticIndexReady = false
+let semanticInferenceDevice: 'webgpu' | 'wasm' | null = null
+let semanticQuery = ''
+let semanticScores: Record<string, number> = {}
+let semanticQueryTimer: ReturnType<typeof setTimeout> | null = null
 
 logger.info('results page loaded')
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    await initializePage()
     setupEventListeners()
+    await initializePage()
   } catch (err) {
     logger.error('Failed to initialize results page', err)
     showError('Failed to load images. Please try again.')
@@ -103,9 +113,8 @@ async function initializePage() {
   renderImages()
   restoreGridSize()
   restoreSaveAsPreference()
-
-  // Hide loading
   hideElement('loading')
+  void initSemanticSearch()
 }
 
 function restoreGridSize() {
@@ -134,10 +143,10 @@ function updatePageInfo() {
 }
 
 function setupEventListeners() {
-  addEvent('formatFilter', 'change', applyFilters)
-  addEvent('sizeFilter', 'change', applyFilters)
-  addEvent('sourceFilter', 'change', applyFilters)
-  addEvent('visibilityFilter', 'change', applyFilters)
+  addEvent('formatFilter', 'change', onFiltersChanged)
+  addEvent('sizeFilter', 'change', onFiltersChanged)
+  addEvent('sourceFilter', 'change', onFiltersChanged)
+  addEvent('visibilityFilter', 'change', onFiltersChanged)
 
   querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -221,6 +230,207 @@ function setupEventListeners() {
 
   // Populate all filter options with counts
   populateAllFilters()
+
+  addEvent('semanticSearchEnableBtn', 'click', () => {
+    void openSemanticSearchModal()
+  })
+  addEvent('semanticModalCancel', 'click', closeSemanticSearchModal)
+  addEvent('semanticModalConfirm', 'click', () => {
+    void confirmSemanticSearchEnable()
+  })
+  addEvent('semanticSearchModal', 'click', (e) => {
+    if (e.target === getRequiredElement('semanticSearchModal')) {
+      closeSemanticSearchModal()
+    }
+  })
+  addEvent('semanticSearchInput', 'input', () => {
+    semanticQuery = getRequiredElement<HTMLInputElement>('semanticSearchInput').value.trim()
+    applyFilters()
+    scheduleSemanticEmbeddingRefresh()
+  })
+}
+
+async function openSemanticSearchModal() {
+  const settings = await loadSemanticSearchSettings()
+  getRequiredElement<HTMLInputElement>('semanticRequireGpu').checked = settings.inferenceDevice === 'webgpu'
+  getRequiredElement('semanticSearchModal').classList.add('open')
+}
+
+function closeSemanticSearchModal() {
+  getRequiredElement('semanticSearchModal').classList.remove('open')
+}
+
+function setSemanticStatus(message: string) {
+  getRequiredElement('semanticSearchStatus').textContent = message
+}
+
+function formatSemanticErrorStatus(message: string): string {
+  return `${message} — substring search in the box still works; embeddings need a successful model load.`
+}
+
+function formatSemanticReadyStatus(): string {
+  const device = semanticInferenceDevice === 'webgpu' ? 'GPU (WebGPU)' : 'CPU (WebAssembly)'
+  return `Semantic search ready on ${device} — alt/URL keywords + embeddings`
+}
+
+function formatSemanticProgress(progress: SemanticSearchProgress): string {
+  if (progress.current === undefined || progress.total === undefined) {
+    return progress.message
+  }
+  if (progress.phase === 'loading-model') {
+    if (progress.message !== 'Downloading model…') {
+      return progress.message
+    }
+    const pct = Math.round((progress.current / progress.total) * 100)
+    const loaded = formatMegabytes(progress.current)
+    const total = formatMegabytes(progress.total)
+    return `Downloading model…  ${loaded} / ${total} MB  (${padNumber(pct, 3)}%)`
+  }
+  const totalDigits = String(progress.total).length
+  const current = padNumber(progress.current, totalDigits)
+  const total = padNumber(progress.total, totalDigits)
+  return `${progress.message}  (${current}/${total})`
+}
+
+function formatMegabytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024)
+  return mb.toFixed(1).padStart(6, ' ')
+}
+
+function padNumber(value: number, width: number): string {
+  return String(value).padStart(width, ' ')
+}
+
+function updateSemanticSearchUi() {
+  const input = getRequiredElement<HTMLInputElement>('semanticSearchInput')
+  const enableBtn = getRequiredElement<HTMLButtonElement>('semanticSearchEnableBtn')
+  if (semanticSearchEnabled) {
+    hideElement(enableBtn)
+    input.disabled = false
+  } else {
+    showElement(enableBtn)
+    input.disabled = true
+    input.value = ''
+  }
+}
+
+async function initSemanticSearch() {
+  const settings = await loadSemanticSearchSettings()
+  semanticSearchEnabled = settings.enabled
+  updateSemanticSearchUi()
+  if (settings.enabled) {
+    await startSemanticSearchPipeline()
+  }
+}
+
+async function confirmSemanticSearchEnable() {
+  closeSemanticSearchModal()
+  const settings = await loadSemanticSearchSettings()
+  settings.enabled = true
+  settings.disclosureAcceptedAt = new Date().toISOString()
+  settings.inferenceDevice = getRequiredElement<HTMLInputElement>('semanticRequireGpu').checked
+    ? 'webgpu'
+    : 'auto'
+  await saveSemanticSearchSettings(settings)
+  semanticSearchEnabled = true
+  updateSemanticSearchUi()
+  await startSemanticSearchPipeline()
+}
+
+async function startSemanticSearchPipeline() {
+  semanticIndexReady = false
+  semanticScores = {}
+  semanticQuery = ''
+  updateSemanticSearchUi()
+  setSemanticStatus('Preparing semantic search…')
+  semanticSearchClient?.dispose()
+  semanticSearchClient = new SemanticSearchClient()
+  const settings = await loadSemanticSearchSettings()
+  semanticSearchClient.setProgressListener((progress) => {
+    if (progress.inferenceDevice) {
+      semanticInferenceDevice = progress.inferenceDevice
+    }
+    if (progress.phase === 'error') {
+      setSemanticStatus(formatSemanticErrorStatus(progress.message))
+      semanticIndexReady = false
+      updateSemanticSearchUi()
+      return
+    }
+    setSemanticStatus(formatSemanticProgress(progress))
+    if (progress.phase === 'indexing' && semanticQuery) {
+      void refreshSemanticScores({ silent: true })
+    }
+    if (progress.phase === 'ready') {
+      semanticIndexReady = true
+      updateSemanticSearchUi()
+      setSemanticStatus(formatSemanticReadyStatus())
+      if (semanticQuery) {
+        void refreshSemanticScores()
+      }
+    }
+  })
+  try {
+    await semanticSearchClient.start(allImages, currentPageInfo?.title, settings.inferenceDevice)
+  } catch (err) {
+    logger.error('Semantic search failed', err)
+    const message = err instanceof Error ? err.message : String(err)
+    setSemanticStatus(formatSemanticErrorStatus(message))
+    semanticIndexReady = false
+    updateSemanticSearchUi()
+    semanticSearchClient.dispose()
+    semanticSearchClient = null
+  }
+}
+
+function scheduleSemanticEmbeddingRefresh() {
+  if (semanticQueryTimer) {
+    clearTimeout(semanticQueryTimer)
+  }
+  semanticQueryTimer = setTimeout(() => {
+    void refreshSemanticScores({ silent: !semanticIndexReady })
+  }, 300)
+}
+
+async function refreshSemanticScores(options?: { silent?: boolean }) {
+  if (!semanticSearchEnabled || !semanticQuery) {
+    semanticScores = {}
+    applyFilters()
+    return
+  }
+  if (!semanticSearchClient?.isModelReady()) {
+    semanticScores = {}
+    applyFilters()
+    return
+  }
+  if (!options?.silent) {
+    setSemanticStatus('Ranking…')
+  }
+  try {
+    const ids = collectFilteredImages().map((image) => image.id)
+    semanticScores = await semanticSearchClient.scoreQuery(semanticQuery, ids)
+    applyFilters()
+    if (!options?.silent && semanticIndexReady) {
+      setSemanticStatus(formatSemanticReadyStatus())
+    }
+  } catch (err) {
+    logger.error('Semantic query failed', err)
+    if (!options?.silent) {
+      setSemanticStatus('Search failed')
+    }
+  }
+}
+
+function syncSemanticQueryFromInput() {
+  if (!semanticSearchEnabled) {
+    return
+  }
+  semanticQuery = getRequiredElement<HTMLInputElement>('semanticSearchInput').value.trim()
+}
+
+function onFiltersChanged() {
+  syncSemanticQueryFromInput()
+  applyFilters()
+  void refreshSemanticScores({ silent: !semanticIndexReady })
 }
 
 function populateAllFilters() {
@@ -348,13 +558,13 @@ function populateVisibilityFilter() {
   })
 }
 
-function applyFilters() {
+function collectFilteredImages(): ImageDisplayData[] {
   const formatFilter = getRequiredElement<HTMLSelectElement>('formatFilter')
   const sizeFilter = getRequiredElement<HTMLSelectElement>('sizeFilter')
   const sourceFilter = getRequiredElement<HTMLSelectElement>('sourceFilter')
   const visibilityFilter = getRequiredElement<HTMLSelectElement>('visibilityFilter')
 
-  filteredImages = allImages.filter(image => {
+  return allImages.filter(image => {
     // Format filter
     if (formatFilter.value && image.f !== formatFilter.value) {
       return false
@@ -395,6 +605,23 @@ function applyFilters() {
 
     return true
   })
+}
+
+function applyFilters() {
+  let list = collectFilteredImages()
+  if (semanticSearchEnabled && semanticQuery) {
+    const query = semanticQuery
+    list = [...list].sort((a, b) => {
+      return compareSemanticRank(
+        a,
+        b,
+        semanticScores[a.id] ?? 0,
+        semanticScores[b.id] ?? 0,
+        query,
+      )
+    })
+  }
+  filteredImages = list
   // Reset current image index when filters change
   currentImageIndex = 0
 

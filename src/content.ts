@@ -1,4 +1,5 @@
 import { parseSrcset } from 'srcset'
+import { isGenericImageLabel } from './semanticSearch/imageLabels.js'
 import type { RequestMessage } from './types.js'
 import { MessageAction, type ExtractedImage, type ImageSourceType } from './types.js'
 import { logger, querySelectorAll, TIMEOUTS } from './utils.js'
@@ -97,9 +98,17 @@ function performExtraction(): ExtractedImage[] {
       return
     }
     const extracted = createImageObject(url, element, source)
-    if (extracted && !images.some(img => img.u === extracted.u)) {
-      images.push(extracted)
+    if (!extracted) {
+      return
     }
+    const existing = images.find((img) => img.u === extracted.u)
+    if (existing) {
+      if (extracted.a && (!existing.a || existing.a.length < extracted.a.length)) {
+        existing.a = extracted.a
+      }
+      return
+    }
+    images.push(extracted)
   }
 
   for (const element of allElements) {
@@ -315,7 +324,7 @@ function createImageObject(url: string, element: Element, source: ImageSourceTyp
     if (width && width < EXTRACTION_SETTINGS.minWidth) return null
     if (height && height < EXTRACTION_SETTINGS.minHeight) return null
 
-    const alt = (element as HTMLImageElement).alt || (element as HTMLElement).title || undefined
+    const alt = pickImageDescription(element)
     const visibleInViewport = isElementVisibleInViewport(element)
     return {
       u: url,
@@ -351,6 +360,80 @@ function extractCurrentFrameFromVideo(video: HTMLVideoElement): string | null {
     logger.warn('Failed to extract video frame:', err)
     return null
   }
+}
+
+/** Pin closeup / older grids: title on the pin link, not on img.alt. */
+function pinterestDescriptionForImage(img: HTMLImageElement): string | undefined {
+  if (!window.location.hostname.endsWith('pinterest.com')) {
+    return undefined
+  }
+  const root = img.closest(
+    '[data-test-id="pin"], [data-test-pin-id], [data-test-id="pinWrapper"], [data-grid-item="true"]',
+  )
+  if (!root) {
+    return undefined
+  }
+  const link = root.querySelector('a[href*="/pin/"]')
+  const label = link?.getAttribute('aria-label')?.replace(/\s+/g, ' ').trim()
+  if (label && !isGenericImageLabel(label)) {
+    return label
+  }
+  return undefined
+}
+
+/** Alt, title, aria-label, and nearby pin/card labels (Pinterest often leaves img.alt empty). */
+function pickImageDescription(element: Element): string | undefined {
+  if (element instanceof HTMLSourceElement) {
+    const picture = element.closest('picture')
+    const img = picture?.querySelector('img')
+    if (img) {
+      return pickImageDescription(img)
+    }
+  }
+
+  const parts: string[] = []
+  const push = (value: string | null | undefined) => {
+    const text = value?.replace(/\s+/g, ' ').trim()
+    if (text && !isGenericImageLabel(text)) {
+      parts.push(text)
+    }
+  }
+
+  if (element instanceof HTMLImageElement) {
+    push(pinterestDescriptionForImage(element))
+    push(element.alt)
+  }
+  if (element instanceof HTMLElement) {
+    push(element.title)
+  }
+  push(element.getAttribute('aria-label'))
+
+  const labelledBy = element.getAttribute('aria-labelledby')
+  if (labelledBy) {
+    for (const id of labelledBy.split(/\s+/)) {
+      push(document.getElementById(id)?.textContent)
+    }
+  }
+
+  const figure = element.closest('figure')
+  if (figure) {
+    push(figure.querySelector('figcaption')?.textContent)
+  }
+
+  let parent = element.parentElement
+  for (let depth = 0; parent && depth < 5; depth++) {
+    push(parent.getAttribute('aria-label'))
+    if (parent instanceof HTMLImageElement) {
+      push(parent.alt)
+    }
+    if (parent instanceof HTMLAnchorElement) {
+      push(parent.title)
+    }
+    parent = parent.parentElement
+  }
+
+  const unique = [...new Set(parts)]
+  return unique.length > 0 ? unique.join(' — ') : undefined
 }
 
 function extractSrcset(srcset: string): string[] {
