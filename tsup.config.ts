@@ -38,10 +38,8 @@ function buildTransformersVendor() {
     platform: 'browser',
     target: 'es2022',
     minify: prod,
-    alias: {
-      'onnxruntime-web/webgpu': 'onnxruntime-web/wasm',
-    },
-    // Bundled ORT WASM (no extern .mjs + blob: dynamic import — blocked by MV3 CSP).
+    // Bundle real onnxruntime-web/webgpu (aliasing to /wasm unregisters the WebGPU EP).
+    // No onnxruntime-web-use-extern-wasm — that path uses blob: scripts blocked by MV3 CSP.
     conditions: ['import', 'default'],
     legalComments: 'none',
   })

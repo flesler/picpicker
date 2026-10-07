@@ -1,4 +1,12 @@
-import { SemanticSearchClient, type SemanticSearchProgress } from './semanticSearch/client.js'
+import env from './env.js'
+import {
+  finalizeSemanticBench,
+  logWebGpuAdapterProbe,
+  publishSemanticBench,
+  type PicPickerSemanticBench,
+} from './semanticSearch/bench.js'
+import { SemanticSearchClient, type SemanticSearchProgress, type SemanticWorkerBenchEvent } from './semanticSearch/client.js'
+import { inferenceDeviceLabel, probeWebGpuAdapter, type WebGpuAdapterProbe } from './semanticSearch/inferenceDevice.js'
 import { compareSemanticRank } from './semanticSearch/ranking.js'
 import { loadSemanticSearchSettings, saveSemanticSearchSettings } from './semanticSearch/settings.js'
 import type { GetSessionDataResponse, ImageSourceType, RequestMessage } from './types.js'
@@ -35,9 +43,60 @@ let semanticSearchClient: SemanticSearchClient | null = null
 let semanticSearchEnabled = false
 let semanticIndexReady = false
 let semanticInferenceDevice: 'webgpu' | 'wasm' | null = null
+let semanticGpuAdapter: WebGpuAdapterProbe | null = null
 let semanticQuery = ''
 let semanticScores: Record<string, number> = {}
 let semanticQueryTimer: ReturnType<typeof setTimeout> | null = null
+let semanticBench: PicPickerSemanticBench = {
+  updatedAt: '',
+  device: null,
+  queries: [],
+}
+
+function resetSemanticBench() {
+  semanticBench = {
+    updatedAt: new Date().toISOString(),
+    device: null,
+    queries: [],
+  }
+}
+
+function applySemanticBenchEvent(event: SemanticWorkerBenchEvent) {
+  semanticBench.updatedAt = new Date().toISOString()
+  switch (event.kind) {
+    case 'model':
+      semanticBench.device = event.device
+      semanticBench.modelLoadMs = event.modelLoadMs
+      if (event.adapterWorker) {
+        semanticBench.adapterWorker = event.adapterWorker
+        semanticBench.adapter = event.adapterWorker
+        semanticGpuAdapter = event.adapterWorker
+        logWebGpuAdapterProbe('worker', event.adapterWorker)
+      }
+      break
+    case 'index':
+      semanticBench.indexWallMs = event.indexWallMs
+      semanticBench.indexEmbedMs = event.indexEmbedMs
+      semanticBench.uniqueTexts = event.uniqueTexts
+      semanticBench.imageItems = event.imageItems
+      break
+    case 'query':
+      semanticBench.queries.push({
+        text: event.queryText,
+        embedMs: event.queryEmbedMs,
+        scoreMs: event.queryScoreMs,
+        idCount: event.scoredIds,
+      })
+      break
+    default:
+      break
+  }
+  semanticBench = finalizeSemanticBench(semanticBench)
+  publishSemanticBench(semanticBench)
+  if (event.kind === 'query' && semanticIndexReady) {
+    setSemanticStatus(formatSemanticReadyStatus())
+  }
+}
 
 logger.info('results page loaded')
 
@@ -270,8 +329,22 @@ function formatSemanticErrorStatus(message: string): string {
 }
 
 function formatSemanticReadyStatus(): string {
-  const device = semanticInferenceDevice === 'webgpu' ? 'GPU (WebGPU)' : 'CPU (WebAssembly)'
-  return `Semantic search ready on ${device} — alt/URL keywords + embeddings`
+  const device = inferenceDeviceLabel(semanticInferenceDevice ?? 'wasm', semanticGpuAdapter)
+  let line = `Semantic search ready on ${device} — alt/URL keywords + embeddings`
+  if (env.NODE_ENV === 'development' && semanticBench.summary) {
+    const s = semanticBench.summary
+    const lastQuery = semanticBench.queries.at(-1)
+    const adapterInfo = semanticBench.adapterWorker ?? semanticBench.adapterPage ?? semanticBench.adapter
+    const adapterTag = adapterInfo?.hardware
+      ? 'hardware GPU'
+      : adapterInfo?.description ?? 'adapter unknown'
+    const texts = semanticBench.uniqueTexts ?? 0
+    line += ` · Index ${s.indexWallSec}s (${texts} texts, ~${s.msPerUniqueText}ms/text) · ${adapterTag}`
+    if (lastQuery) {
+      line += ` · Last query “${lastQuery.text}” ${lastQuery.embedMs.toFixed(0)}ms`
+    }
+  }
+  return line
 }
 
 function formatSemanticProgress(progress: SemanticSearchProgress): string {
@@ -346,7 +419,24 @@ async function startSemanticSearchPipeline() {
   setSemanticStatus('Preparing semantic search…')
   semanticSearchClient?.dispose()
   semanticSearchClient = new SemanticSearchClient()
+  resetSemanticBench()
+  semanticGpuAdapter = await probeWebGpuAdapter()
+  if (semanticGpuAdapter) {
+    semanticBench.adapterPage = semanticGpuAdapter
+    semanticBench.adapter = semanticGpuAdapter
+    logWebGpuAdapterProbe('results-page', semanticGpuAdapter)
+    publishSemanticBench(semanticBench)
+  } else {
+    logWebGpuAdapterProbe('results-page', null)
+  }
+  if (semanticGpuAdapter && !semanticGpuAdapter.hardware) {
+    logger.warn(
+      'WebGPU is software-only (SwiftShader) on this Chrome — not the RTX GPU. '
+      + 'See docs/embedding-benchmarks.md for Linux fixes before trusting index timings.',
+    )
+  }
   const settings = await loadSemanticSearchSettings()
+  semanticSearchClient.setBenchListener(applySemanticBenchEvent)
   semanticSearchClient.setProgressListener((progress) => {
     if (progress.inferenceDevice) {
       semanticInferenceDevice = progress.inferenceDevice

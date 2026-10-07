@@ -2,8 +2,9 @@
 
 Plan for optional, on-device **text → image** search in PicPicker using Google’s **EmbeddingGemma 2**. All inference stays local; model weights are fetched only after explicit opt-in.
 
-**Status:** Phase 1 shipped in v3.0.0 (text-only semantic search, opt-in). Vision indexing not yet implemented.  
-**Primary references:** [Model card](https://ai.google.dev/gemma/docs/embeddinggemma/model_card_2) · [Developer guide](https://developers.googleblog.com/embeddinggemma-2-the-developer-guide/) · [ONNX for Transformers.js](https://huggingface.co/onnx-community/embeddinggemma-2-ONNX)
+**Status:** **Paused / archive** — experiment on branch `embeddinggemma` only (not `main`). Phase 1 text-only indexing was implemented; **WebGPU did not meet UX bar** on Linux dev hardware (see [embedding-experiment-closeout.md](./embedding-experiment-closeout.md) on `main` and [embedding-benchmarks.md](./embedding-benchmarks.md)). Vision not started.  
+**Benchmark log:** [embedding-benchmarks.md](./embedding-benchmarks.md) (measured wall times, adapter notes).  
+**Primary references:** [Model card](https://ai.google.dev/gemma/docs/embeddinggemma/model_card_2) · [Developer guide](https://developers.googleblog.com/embeddinggemma-2-the-developer-guide/) · [ONNX for Transformers.js](https://huggingface.co/onnx-community/embeddinggemma-2-ONNX) · [Transformers.js v4 + ORT WebGPU](https://huggingface.co/blog/transformersjs-v4)
 
 ---
 
@@ -179,21 +180,51 @@ Most extracted images have **no alt text**; **text-only** embeddings (alt + URL 
 | User chooses text-only on CPU | Allow with persistent banner: “Text-only mode — many images may not match.” |
 | User on CPU tries to enable vision | Allow only after explicit **“I understand this may be slow”** checkbox; show time estimate based on image count. |
 
-### Capability detection (implementation sketch)
+### Capability detection
 
-```typescript
-async function hasWebGpu(): Promise<boolean> {
-  if (!navigator.gpu) return false
-  try {
-    const adapter = await navigator.gpu.requestAdapter()
-    return adapter != null
-  } catch {
-    return false
-  }
-}
-```
+- **Results page:** `resolveInferenceDevice()` uses `navigator.gpu.requestAdapter()` for UI and device preference (`auto` / `webgpu` / `cpu`).
+- **Module worker:** probe `requestAdapter()` again in `embeddingWorker.ts` before `pipeline(..., { device: 'webgpu' })`. The host page and worker can disagree on Linux; never assume GPU from the page alone.
+- **Fallback:** one device per load — WebGPU with ORT **asyncify** wasm sidecar paths, or full **JSEP** wasm CPU. Do not start WebGPU and WASM sessions in parallel (race aborts load).
+- **SwiftShader / null adapter:** treat as CPU; show honest “slow indexing” copy.
 
-Run once per results page load when user opens semantic search UI.
+### WebGPU in Manifest V3 (PicPicker)
+
+| Question | Answer |
+|----------|--------|
+| Is `chrome-extension://` a secure context for WebGPU? | Yes — same as extension pages and workers spawned from them. |
+| Is MV3 itself a blocker? | **No** — prior `backend not found` errors were from bundling and policy, not a documented extension ban. |
+| Where to run inference? | **Dedicated module worker** from `results.html` (current). Offscreen document only if indexing must outlive the results tab. **Not** the MV3 service worker (short-lived, wrong for a 170MB resident model). |
+| What broke GPU initially? | (1) esbuild **aliased** `onnxruntime-web/webgpu` → `onnxruntime-web/wasm`, so the WebGPU EP never registered. (2) `extensionInferenceIsCpuOnly()` forced WASM on all extension origins. Both removed on `embeddinggemma`. |
+| CSP | Keep `script-src 'self' 'wasm-unsafe-eval'`. `env.useWasmCache = false` (no `blob:` script URLs). `numThreads: 1` (thread pool uses `blob:` workers). |
+| ORT wasm files in `dist/wasm/` | **JSEP** (`ort-wasm-simd-threaded.jsep.*`) for `device: 'wasm'`. **Asyncify** (`ort-wasm-simd-threaded.asyncify.*`) as wasm fallback when `device: 'webgpu'`. Transformers bundle must import the real `onnxruntime-web/webgpu` entry (~1.3MB vendor). |
+
+References: [Chrome WebGPU troubleshooting](https://developer.chrome.com/docs/web-platform/webgpu/troubleshooting-tips) · [ORT WebGPU in extensions (HF)](https://huggingface.co/blog/how-to-use-transformers-js-in-a-chrome-extension) · [Chrome sample `sample.webgpu`](https://github.com/GoogleChrome/chrome-extensions-samples/tree/main/functional-samples/sample.webgpu) · [gemma-gem offscreen pattern](https://github.com/kessler/gemma-gem).
+
+### Expected GPU coverage (Chrome extension users)
+
+“Caniuse WebGPU” (~84% page views) **overstates** hardware adapters (mobile-weighted, version ≠ adapter). For **desktop Chrome** extension users:
+
+| Platform | Rough adapter success | Product note |
+|----------|----------------------|--------------|
+| Windows | High (~85%+) | Primary audience; WebGPU via D3D12. |
+| macOS | High (~90%+) | Primary audience. |
+| Linux | Low unless recent Chrome + driver | Developer machines may need flags or Vulkan/ICD fixes; keep WASM fallback and clear status. |
+| Firefox | Partial by OS | WASM fallback; do not block Chrome on Firefox WebGPU maturity. |
+
+**Bar:** ship semantic search for Chrome desktop with **WebGPU when `requestAdapter()` succeeds**; WASM is degraded mode (minutes on ~200 text embeds). Vision phase **requires** GPU for most users. `nvidia-smi` is not a reliable signal (WebGPU uses Dawn/Vulkan/D3D12, not CUDA).
+
+### UX latency targets (text index today, vision later)
+
+Indexing cost is driven by **`uniqueTexts`** (deduped document strings), not raw grid rows — duplicate URLs share one embed. Dev builds log totals on completion: `[PicPicker bench] INDEX wall=…s unique=… images=… ~…ms/text`.
+
+| Scenario | Rough “useful?” bar (text-only phase) | Notes |
+|----------|----------------------------------------|--------|
+| Typical page (~50–120 images, ~30–80 unique strings) | **&lt; ~30s wall** on hardware WebGPU feels OK; **&gt; ~60s** feels broken for a one-shot tab | Warmup + first batch dominate; cached model load ~2s after first visit. |
+| Heavy gallery (~160–200 images) | Same per-text cost; wall scales with unique count + batch yields | Wikimedia Fruit QA page ≈160 rows; measure with `__picpickerSemanticBench.summary`. |
+| CPU WASM fallback | Often **many minutes** for the same pages | Acceptable only as explicit degraded mode. |
+| **Vision (future)** | Must be **≪** text wall per image at same N | One encoder pass per image (or URL), no alt dedupe; text phase is the optimistic lower bound — if text already feels like 15s+ on a medium page, vision at full N is not shippable without GPU + caps (visible-first, max N). |
+
+**Product knobs already aligned with this:** batch size 4, yield 16ms between batches, optional future **max images to index** and visible-first order (§6). Phase 0 exit is measured wall time on WebGPU hardware, not SwiftShader-only laptops.
 
 ### Indexing strategy (vision mode)
 
@@ -254,12 +285,13 @@ Current public claims (e.g. `PRIVACY.md`, README) state **no network requests** 
 
 ### Phase 0 — Spike (1–2 weeks)
 
-- [ ] Add `docs/` reference implementation notes from spike branch.
-- [ ] Worker loads EG2 ONNX; embed 10 fixture images + 5 queries; manual quality check.
-- [ ] Measure WebGPU vs WASM latency per image on target hardware.
+- [x] Text-only worker + results UI on `embeddinggemma`; lexical search immediate, embeddings additive.
+- [x] MV3 vendor bundle + wasm copy pipeline (`tsup.config.ts`); document CSP constraints (this file §6).
+- [x] Remove WebGPU→WASM esbuild alias; load real ORT WebGPU EP; worker-side `requestAdapter()`.
+- [ ] Measure WebGPU vs WASM latency (50–200 text embeds) on Windows/macOS + Linux dev box. Dev builds log `[PicPicker bench]` to the console and set `window.__picpickerSemanticBench` (model load, index wall/embed ms, per-query embed ms).
 - [ ] Confirm vision path in Transformers.js for `onnx-community/embeddinggemma-2-ONNX`.
 
-**Exit criteria:** Demonstrated text query ranking images in dev build with acceptable latency on WebGPU.
+**Exit criteria:** Text query ranking on [Wikipedia Fruits gallery](https://en.wikipedia.org/wiki/Wikipedia:Featured_pictures/Plants/Fruits) with **acceptable indexing time on WebGPU** (order-of-magnitude faster than WASM CPU).
 
 ### Phase 1 — Opt-in plumbing (1 week)
 
@@ -353,7 +385,9 @@ Site-specific Pinterest adapters (pin wrapper → link `aria-label`, JSON-LD on 
 
 ### MV3 bundling (PicPicker v3)
 
-Do **not** copy `transformers.web.js` from npm as-is: it contains bare `onnxruntime-web/*` imports that fail on `chrome-extension://`. **esbuild-bundle** into `dist/vendor/` (alias WebGPU → WASM, **no** `onnxruntime-web-use-extern-wasm` — that path uses `blob:` scripts blocked by MV3 CSP). Set `env.useWasmCache = false` before `pipeline()`. Point `wasmPaths` at `chrome-extension://…/wasm/` (+ `ort.wasm.min.mjs` if using extern ORT). Module workers have no `chrome.runtime` — pass URLs from the results page in the worker `load` message.
+Do **not** copy `transformers.web.js` from npm as-is: bare `onnxruntime-web/*` imports fail on `chrome-extension://`. **esbuild-bundle** into `dist/vendor/transformers.web.js` with the **real** `onnxruntime-web/webgpu` import (do **not** alias to `/wasm` — that strips the WebGPU EP and yields `ERR: [webgpu] backend not found`). Do **not** use the `onnxruntime-web-use-extern-wasm` condition — it relies on `blob:` dynamic imports blocked by MV3 CSP.
+
+Before `pipeline()`: `env.useWasmCache = false`; set `env.backends.onnx.wasm.wasmPaths` to extension URLs for **asyncify** (WebGPU) or **JSEP** (CPU-only); `numThreads: 1`; `proxy: false`. Copy `node_modules/onnxruntime-web/dist/*.wasm` and `ort-wasm*.mjs` into `dist/wasm/`. Pin ORT to the version pulled by `@huggingface/transformers` (see `package-lock.json`). Module workers have no `chrome.runtime` — pass all wasm URLs from `results.ts` in the worker `load` message.
 
 ---
 
@@ -381,4 +415,4 @@ Do **not** copy `transformers.web.js` from npm as-is: it contains bare `onnxrunt
 
 ---
 
-*Last updated: 2026-10-06. Revise download size (MB) and Transformers.js version after Phase 0 measurements.*
+*Last updated: 2026-10-07. Transformers.js `@huggingface/transformers` ^4.3.1 · ORT web `1.31.0-dev` (transitive). Revise download size (MB) after Phase 0 latency measurements.*

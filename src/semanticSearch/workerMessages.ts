@@ -5,6 +5,9 @@ export type EmbeddingWorkerRequest =
     type: 'load'
     ortWasmEntryUrl: string
     ortWasmBinaryUrl: string
+    /** JSEP wasm pair used when falling back from WebGPU to CPU */
+    ortWasmFallbackEntryUrl: string
+    ortWasmFallbackBinaryUrl: string
     transformersUrl: string
     device: 'webgpu' | 'wasm'
     dtype: SemanticModelDtype
@@ -21,7 +24,30 @@ export type EmbeddingWorkerResponse =
     total?: number
     indexedIds?: string[]
   }
-  | { type: 'ready'; device: 'webgpu' | 'wasm' }
-  | { type: 'indexed'; embeddings: Record<string, number[]> }
-  | { type: 'scores'; scores: Record<string, number> }
+  | {
+    type: 'ready'
+    device: 'webgpu' | 'wasm'
+    bench?: { modelLoadMs: number }
+    adapterProbe?: {
+      hardware: boolean
+      description: string
+      vendor: string
+      architecture: string
+    }
+  }
+  | {
+    type: 'indexed'
+    embeddings: Record<string, number[]>
+    bench?: {
+      indexWallMs: number
+      indexEmbedMs: number
+      uniqueTexts: number
+      imageItems: number
+    }
+  }
+  | {
+    type: 'scores'
+    scores: Record<string, number>
+    bench?: { queryEmbedMs: number; queryScoreMs: number; scoredIds: number }
+  }
   | { type: 'error'; message: string }

@@ -1,4 +1,5 @@
 import { SEMANTIC_MODEL_ID } from './semanticSearch/constants.js'
+import { probeWebGpuAdapter } from './semanticSearch/gpuAdapter.js'
 import type { EmbeddingWorkerRequest, EmbeddingWorkerResponse, SemanticModelDtype } from './semanticSearch/workerMessages.js'
 
 const INDEX_BATCH_SIZE = 4
@@ -74,7 +75,7 @@ function postDownloadProgress() {
       post({
         type: 'progress',
         phase: 'download',
-        message: 'Download complete — initializing on CPU (can take 1–2 min)…',
+        message: 'Download complete — initializing model (can take 1–2 min)…',
       })
     }
     return
@@ -146,8 +147,12 @@ interface IndexJob {
 }
 
 let indexJob: IndexJob | null = null
+let indexWallStartMs = 0
+let indexEmbedMs = 0
 
 function beginIndex(items: { id: string; text: string }[]) {
+  indexWallStartMs = performance.now()
+  indexEmbedMs = 0
   embeddingById.clear()
   const uniqueTexts: string[] = []
   const seenText = new Set<string>()
@@ -187,7 +192,17 @@ async function runIndexBatch() {
       embeddings[id] = vector
     })
     indexJob = null
-    post({ type: 'indexed', embeddings })
+    const indexWallMs = performance.now() - indexWallStartMs
+    post({
+      type: 'indexed',
+      embeddings,
+      bench: {
+        indexWallMs,
+        indexEmbedMs,
+        uniqueTexts: uniqueTexts.length,
+        imageItems: items.length,
+      },
+    })
     return
   }
 
@@ -199,13 +214,15 @@ async function runIndexBatch() {
     post({
       type: 'progress',
       phase: 'index',
-      message: 'Warming up model (first embedding on CPU is slow)…',
+      message: 'Warming up model (first embedding can take a moment)…',
       current: 0,
       total: items.length,
     })
   }
 
+  const embedStart = performance.now()
   const batchVectors = await embedTexts(batchTexts)
+  indexEmbedMs += performance.now() - embedStart
   batchTexts.forEach((text, j) => {
     job.vectorsByText.set(text, batchVectors[j])
   })
@@ -238,7 +255,10 @@ async function scoreQuery(query: string, ids: string[]) {
   if (!extractor) {
     throw new Error('Model not loaded')
   }
+  const embedStart = performance.now()
   const queryVector = (await embedTexts([query]))[0]
+  const queryEmbedMs = performance.now() - embedStart
+  const scoreStart = performance.now()
   const scores: Record<string, number> = {}
   for (const id of ids) {
     const docVector = embeddingById.get(id)
@@ -251,7 +271,12 @@ async function scoreQuery(query: string, ids: string[]) {
     }
     scores[id] = dot
   }
-  post({ type: 'scores', scores })
+  const queryScoreMs = performance.now() - scoreStart
+  post({
+    type: 'scores',
+    scores,
+    bench: { queryEmbedMs, queryScoreMs, scoredIds: ids.length },
+  })
 }
 
 self.onmessage = async (event: MessageEvent<EmbeddingWorkerRequest>) => {
@@ -259,17 +284,21 @@ self.onmessage = async (event: MessageEvent<EmbeddingWorkerRequest>) => {
     const message = event.data
     switch (message.type) {
     case 'load': {
+        const modelLoadStart = performance.now()
+        const adapterProbe = await probeWebGpuAdapter()
       transformersImportUrl = message.transformersUrl
       let activeDevice = message.device
-      if (
-        activeDevice === 'webgpu'
-        && typeof location !== 'undefined'
-        && location.protocol === 'chrome-extension:'
-      ) {
+        if (activeDevice === 'webgpu' && !adapterProbe) {
         activeDevice = 'wasm'
       }
+        let ortEntryUrl = message.ortWasmEntryUrl
+        let ortBinaryUrl = message.ortWasmBinaryUrl
+        if (activeDevice === 'wasm') {
+          ortEntryUrl = message.ortWasmFallbackEntryUrl
+          ortBinaryUrl = message.ortWasmFallbackBinaryUrl
+        }
       try {
-        await loadModel(message.ortWasmEntryUrl, message.ortWasmBinaryUrl, activeDevice, message.dtype)
+        await loadModel(ortEntryUrl, ortBinaryUrl, activeDevice, message.dtype)
       } catch (loadErr) {
         if (activeDevice !== 'webgpu') {
           throw loadErr
@@ -278,13 +307,23 @@ self.onmessage = async (event: MessageEvent<EmbeddingWorkerRequest>) => {
         post({
           type: 'progress',
           phase: 'download',
-          message:
-            'WebGPU unavailable in this context (common in extension workers) — loading on CPU instead…',
+          message: 'WebGPU failed — loading on CPU (WebAssembly) instead…',
         })
         activeDevice = 'wasm'
-        await loadModel(message.ortWasmEntryUrl, message.ortWasmBinaryUrl, 'wasm', message.dtype)
+        await loadModel(
+          message.ortWasmFallbackEntryUrl,
+          message.ortWasmFallbackBinaryUrl,
+          'wasm',
+          message.dtype,
+        )
       }
-      post({ type: 'ready', device: activeDevice })
+        const modelLoadMs = performance.now() - modelLoadStart
+        post({
+          type: 'ready',
+          device: activeDevice,
+          bench: { modelLoadMs },
+          adapterProbe: adapterProbe ?? undefined,
+        })
       break
     }
     case 'index':
